@@ -1,0 +1,58 @@
+#!/usr/bin/python
+
+import subprocess
+import sys
+import tempfile
+import os
+
+tmpl_head="\n\n"
+
+def get_args():
+    args = []
+    paths = []
+
+    for x in range(1,len(sys.argv)):
+        if sys.argv[x] == '--':
+            paths = sys.argv[x+1:]
+            break
+        args.append(sys.argv[x])
+
+    if len(paths) == 0 and not args[-1].startswith('-'):
+        paths = [args[-1],]
+        args = args[:-1]
+
+    return (args, paths)
+
+def handle_meta(arg):
+    vals = arg.split(arg[0])
+    return "%s: %s\n" % (vals[1], vals[2])
+
+if __name__ == "__main__":
+    (args, paths) = get_args()
+
+    commit_args = ["git-commit"]
+    tmpl_body = ""
+    for x in range(0, len(args)):
+        if args[x].startswith("--meta="):
+            tmpl_body += handle_meta(args[x][len("--meta="):])
+        elif args[x].startswith("--ack="):
+            tmpl_body += "Acked-by: %s\n" % (args[x][len("--ack="):],)
+        elif args[x].startswith("--reviewed="):
+            tmpl_body += "Reviewed-by: %s\n" % (args[x][len("--reviewed="):],)
+        elif args[x].startswith("--resolves="):
+            tmpl_body += "Resolves: %s\n" % (args[x][len("--resolves="):],)
+        else:
+            commit_args.append(args[x])
+
+    (tfd, tfp) = tempfile.mkstemp()
+    tf = os.fdopen(tfd, "wb")
+
+    tf.write("%s%s" % (tmpl_head,tmpl_body))
+    tf.flush()
+
+    commit_args += ["--template=%s" % (tfp,), "--"]
+    commit_args += paths
+
+    proc = subprocess.call(commit_args)
+    os.unlink(tfp)
+
