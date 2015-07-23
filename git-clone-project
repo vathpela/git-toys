@@ -1,0 +1,126 @@
+#!/bin/bash
+set -e
+
+user_base=git@github.com
+user_name=vathpela
+user_repo_name=""
+user_repo_suffix=".git"
+
+project_base=git@github.com
+project_name=""
+project_repo_name=""
+project_repo_suffix=".git"
+
+directory=""
+
+[ -n "$GIT_USER_BASE" ] && user_base="$GIT_USER_BASE" || :
+[ -n "$GIT_USER_NAME" ] && user_name="$GIT_USER_NAME" || :
+[ -n "$GIT_USER_REPO_NAME" ] && user_repo_name="$GIT_USER_REPO_NAME" || :
+[ -n "$GIT_USER_REPO_SUFFIX" ] && user_repo_suffix="$GIT_USER_REPO_SUFFIX" || :
+[ -n "$GIT_PROJECT_BASE" ] && project_base="$GIT_PROJECT_BASE" || :
+[ -n "$GIT_PROJECT_NAME" ] && project_name="$GIT_PROJECT_NAME" || :
+[ -n "$GIT_PROJECT_REPO_NAME" ] && project_repo_name="$GIT_PROJECT_REPO_NAME" || :
+[ -n "$GIT_PROJECT_REPO_SUFFIX" ] && project_repo_suffix="$GIT_PROJECT_REPO_SUFFIX" || :
+
+usage()
+{
+	echo "git clone-project <directory>"
+}
+
+error() {
+	echo "${1} is required" 1>&2
+	usage 1 1>&2
+}
+
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--user-base=*)
+		user_base=${1##--user-base=}
+		;;
+	--user-base|-b)
+		user_base=$2
+		shift
+		;;
+	--user-name=*)
+		user_name=${1##--user-name=}
+		;;
+	--user-name|-n)
+		user_name=$2
+		shift
+		;;
+	--user-repo-name=*)
+		user_repo-name=${1##--user-repo-name=}
+		;;
+	--user-repo-name|-r)
+		user_repo-name=$2
+		shift
+		;;
+	--user-repo-suffix=*)
+		user_repo_suffix=${1##--user-repo-suffix=}
+		;;
+	--user-repo_suffix|-s)
+		user_repo_suffix=$2
+		shift
+		;;
+	--project-base=*)
+		project_base=${1##--project-base=}
+		;;
+	--project-base|-B)
+		project_base=$2
+		shift
+		;;
+	--project-name=*)
+		project_name=${1##--project-name=}
+		;;
+	--project-name|-N)
+		project_name=$2
+		shift
+		;;
+	--project-repo-name=*)
+		project_repo-name=${1##--project-repo-name=}
+		;;
+	--project-repo-name|-R)
+		project_repo-name=$2
+		shift
+		;;
+	--project-repo-suffix=*)
+		project_repo_suffix=${1##--project-repo-suffix=}
+		;;
+	--project-repo-suffix|-S)
+		project_repo_suffix=$2
+		shift
+		;;
+	*)
+		[ $# == 1 ] || usage 1 1>&2
+		directory=$1
+		;;
+		
+	esac
+	shift
+done
+
+[ -z "$user_base" ] && error user-base
+[ -z "$user_name" ] && error user_name
+[ -z "$project_base" ] && error project-base
+[ -z "$project_name" ] && error project_name
+[ -z "$project_repo_name" ] && project_repo_name=${directory}
+[ -z "$project_repo_name" ] && error project-repo-name
+[ -z "$user_repo_name" ] && user_repo_name=${project_repo_name}
+[ -z "$user_repo_name" ] && error user-repo-name
+
+[ -z "$directory" ] && directory=${project_repo_name}
+
+project="${project_base}:${project_name}/${project_repo_name}${project_repo_suffix}"
+user="${user_base}:${user_name}/${user_repo_name}${user_repo_suffix}"
+
+git clone "${project}" -o upstream "${directory}"
+export GIT_DIR=.git
+git -C "${directory}" config --local --replace-all remote.origin.url "${project}"
+git -C "${directory}" config --local --replace-all remote.origin.pushurl "${user}"
+git -C "${directory}" config --local --add remote.upstream.fetch '+refs/pull/*/head:refs/pull/upstream/*'
+git -C "${directory}" config --local --add remote.origin.fetch '+refs/heads/*:refs/remotes/upstream/*'
+git -C "${directory}" config --local --add remote.origin.fetch '+refs/pull/*/head:refs/pull/origin/*'
+cp -al "${directory}/.git/refs/remotes/upstream/" "${directory}/.git/refs/remotes/origin/"
+git -C "${directory}" config --local --replace-all branch.master.remote origin
+git -C "${directory}" config --local --add branch.master.rebase true
