@@ -1,3 +1,22 @@
 #!/bin/bash -e
+set -e
+
+usage() {
+	echo "git fetch-pr <pr_number> [<remote>]"
+	exit 1
+}
+
+for x in "$@" ; do
+	case "$x" in
+	--help|-h|--usage|-\?)
+		usage 0
+		;;
+	esac
+done
+
+if [ $# -lt 1 -o $# -gt 2 ]; then
+	usage 1 1>&2
+fi
+
 git fetch -fu "${2:-upstream}" "refs/pull/${1#pr/}/head:refs/remotes/${2:-upstream}/pr/${1#pr/}"
 git list-pr "${1#pr/}" "${2:-upstream}"

@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+usage() {
+	echo "git pr <show|list|cp|fetch> <pull_number> [<remote>]"
+	exit $1
+}
+
+for x in "$@" ; do
+	case "$x" in
+	--help|-h|--usage|-\?)
+		usage 0
+		;;
+	esac
+done
+
+if [ $# -lt 2 -o $# -gt 3 ]; then
+	usage 1 1>&2
+fi
+
+cmd=$1 && shift
+case "$cmd" in
+show|list|fetch|cherry)
+	exec git ${cmd}-pr "$@"
+	;;
+cp)
+	exec git cherry-pr "$@"
+	;;
+esac
