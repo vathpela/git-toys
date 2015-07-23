@@ -2,8 +2,8 @@
 set -e
 
 usage() {
-	echo "git cherry-pr <pr_number> [<remote>]"
-	exit 1
+	echo "git show-pr <remote> <pull_number>"
+	exit $1
 }
 
 for x in "$@" ; do
@@ -18,4 +18,4 @@ if [ $# -lt 1 -o $# -gt 2 ]; then
 	usage 1 1>&2
 fi
 
-exec git cherry-pick "..refs/remotes/${2:-upstream}/pr/${1#pr/}"
+exec git show --color --abbrev=7 --oneline --abbrev-commit "..refs/remotes/${2:-upstream}/pr/${1#pr/}"

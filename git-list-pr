@@ -18,4 +18,4 @@ if [ $# -lt 1 -o $# -gt 2 ]; then
 	usage 1 1>&2
 fi
 
-exec git log --color --abbrev=7 --oneline --abbrev-commit "..refs/remotes/${2:-upstream}/pr/$1"
+exec git log --color --abbrev=7 --oneline --abbrev-commit "..refs/remotes/${2:-upstream}/pr/${1#pr/}"
