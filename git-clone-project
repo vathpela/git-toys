@@ -25,6 +25,7 @@ directory=""
 usage()
 {
 	echo "git clone-project <directory>"
+	exit $1
 }
 
 error() {

@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
+
 usage() {
-	echo "git show-pr <pr_number> [<remote>]"
-	exit $(($0))
+	echo "git cherry-pr <pr_number> [<remote>]"
+	exit 1
 }
 
 for x in "$@" ; do
