@@ -121,6 +121,6 @@ git -C "${directory}" config --local --replace-all remote.origin.url "${project}
 git -C "${directory}" config --local --replace-all remote.origin.pushurl "${user}"
 git -C "${directory}" config --local --add remote.upstream.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
 git -C "${directory}" config --local --add remote.origin.fetch '+refs/heads/*:refs/remotes/upstream/*'
-git -C "${directory}" config --local --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/origin/pr/*'
+git -C "${directory}" config --local --add remote.origin.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
 git -C "${directory}" config --local --replace-all branch.master.remote origin
 git -C "${directory}" config --local --add branch.master.rebase true
