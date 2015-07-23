@@ -1,0 +1,20 @@
+#!/bin/bash
+set -e
+usage() {
+	echo "git show-pr <pr_number> [<remote>]"
+	exit $(($0))
+}
+
+for x in "$@" ; do
+	case "$x" in
+	--help|-h|--usage|-\?)
+		usage 0
+		;;
+	esac
+done
+
+if [ $# -lt 1 -o $# -gt 2 ]; then
+	usage 1 1>&2
+fi
+
+exec git cherry-pick "..refs/remotes/${2:-upstream}/pr/$1"
