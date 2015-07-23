@@ -96,7 +96,6 @@ while [ $# -gt 0 ]; do
 		[ $# == 1 ] || usage 1 1>&2
 		directory=$1
 		;;
-		
 	esac
 	shift
 done
