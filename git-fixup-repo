@@ -1,0 +1,361 @@
+#!/bin/bash
+set -eE
+
+fatal() {
+	echo "fixup-repo: Something has gone horribly wrong.  Sorry." 1>&2
+	exit 1
+}
+trap fatal ERR
+
+usage() {
+	[ -n "$2" ] && echo "$2" || :
+	echo "usage: fixup-repo <checkout_directory>"
+	exit $1
+}
+
+error() {
+	echo "${1} is required" 1>&2
+	usage 1 1>&2
+}
+
+user_base=git@github.com
+user_name=""
+user_repo_name=""
+user_repo_suffix=".git"
+
+project_base=git@github.com
+project_name=""
+project_repo_name=""
+project_repo_suffix=".git"
+
+directory=""
+
+[ -n "$GIT_USER_BASE" ] && user_base="$GIT_USER_BASE" || :
+[ -n "$GIT_USER_NAME" ] && user_name="$GIT_USER_NAME" || :
+[ -n "$GIT_USER_REPO_NAME" ] && user_repo_name="$GIT_USER_REPO_NAME" || :
+[ -n "$GIT_USER_REPO_SUFFIX" ] && user_repo_suffix="$GIT_USER_REPO_SUFFIX" || :
+[ -n "$GIT_PROJECT_BASE" ] && project_base="$GIT_PROJECT_BASE" || :
+[ -n "$GIT_PROJECT_NAME" ] && project_name="$GIT_PROJECT_NAME" || :
+[ -n "$GIT_PROJECT_REPO_NAME" ] && project_repo_name="$GIT_PROJECT_REPO_NAME" || :
+[ -n "$GIT_PROJECT_REPO_SUFFIX" ] && project_repo_suffix="$GIT_PROJECT_REPO_SUFFIX" || :
+
+declare -a list
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--user-base=*)
+		user_base="${1##--user-base=}"
+		;;
+	--user-base|-b)
+		user_base="$2"
+		shift
+		;;
+	--user-name=*)
+		user_name="${1##--user-name=}"
+		;;
+	--user-name|-n)
+		user_name="$2"
+		shift
+		;;
+	--user-repo-name=*)
+		user_repo_name="${1##--user-repo-name=}"
+		;;
+	--user-repo-name|-r)
+		user_repo_name="$2"
+		shift
+		;;
+	--user-repo-suffix=*)
+		user_repo_suffix="${1##--user-repo-suffix=}"
+		;;
+	--user-repo_suffix|-s)
+		user_repo_suffix="$2"
+		shift
+		;;
+	--project-base=*)
+		project_base="${1##--project-base=}"
+		;;
+	--project-base|-B)
+		project_base="$2"
+		shift
+		;;
+	--project-name=*)
+		project_name="${1##--project-name=}"
+		;;
+	--project-name|-N)
+		project_name="$2"
+		shift
+		;;
+	--project-repo-name=*)
+		project_repo_name="${1##--project-repo-name=}"
+		;;
+	--project-repo-name|-R)
+		project_repo_name="$2"
+		shift
+		;;
+	--project-repo-suffix=*)
+		project_repo_suffix="${1##--project-repo-suffix=}"
+		;;
+	--project-repo-suffix|-S)
+		project_repo_suffix="$2"
+		shift
+		;;
+	--git-dir=*)
+		directory="${1##--git-dir=}"
+		;;
+	--git-dir)
+		directory="$2"
+		shift
+		;;
+	*)
+		list[${list[*]}]="$1"
+		;;
+	esac
+	shift
+done
+eval set -- "${list[@]}"
+
+if [ -z "$directory" ]; then
+	if [ $# -ne 1 ]; then
+		usage 1 1>&2
+	fi
+	directory="$1"
+	shift
+fi
+
+if [ $# -ne 0 ]; then
+	usage 1 1>&2
+fi
+
+[ -z "$user_base" ] && error user-base
+[ -z "$user_name" ] && error user-name
+[ -z "$project_base" ] && error project-base
+[ -z "$project_name" ] && error project-name
+[ -z "$project_repo_name" ] && project_repo_name="$directory" || :
+[ -z "$project_repo_name" ] && error project-repo-name
+[ -z "$user_repo_name" ] && user_repo_name="$project_repo_name" || :
+[ -z "$user_repo_name" ] && error user-repo-name
+
+project="${project_base}:${project_name}/${project_repo_name}${project_repo_suffix}"
+user="${user_base}:${user_name}/${user_repo_name}${user_repo_suffix}"
+
+[ -d "${directory#/.git}" -a -d "${directory#/.git}/.git" ] || \
+	usage 1 "fixup-repo: $directory is not a valid git checkout" 1>&2
+repo="$(realpath ${directory#/.git}/.git/)"
+[ -d "$repo" ] || \
+	usage 1 "fixup-repo: $directory is not a valid git checkout" 1>&2
+shift
+
+set has_origin has_upstream has_username has_personal
+has_origin=0
+has_upstream=0
+has_username=0
+has_user_name=0
+has_personal=0
+username="$(whoami)"
+remotes=" $(git remote | tr '\n' ' ')"
+for x in $remotes ; do
+	case "$x" in
+	origin)
+		has_origin=1
+		;;
+	upstream)
+		has_upstream=1
+		;;
+	${username})
+		has_username=1
+		;;
+	${user_name})
+		has_user_name=1
+		;;
+	personal)
+		has_personal=1
+		;;
+	*)
+		;;
+	esac
+done
+if [ $has_user_name -eq 1 -a $has_username -eq 1 ]; then
+	if [ "$username" != "$user_name" ]; then
+		(
+		echo Repo has remotes for both GIT_USER_NAME and unix user name
+		echo Please rectify manually and try again.
+		) 1>&2
+		exit 1
+	fi
+elif [ $has_user_name -eq 1 ]; then
+	username="$user_name"
+	has_username=1
+fi
+#echo has_username: $has_username
+#echo has_upstream: $has_upstream
+#echo has_origin: $has_origin
+#echo has_personal: $has_personal
+
+git="git --git-dir="${repo}""
+config () {
+	$git config --local "$@"
+}
+reset_all() {
+	config --replace-all "$@"
+}
+add() {
+	config --add "$@"
+}
+unset_all() {
+	config --unset-all "$@"
+}
+
+set origin_pull origin_push
+if [ ${has_origin} -eq 1 ]; then
+	origin_pull="$(config --get remote.origin.url)" || :
+	origin_push="$(config --get remote.origin.pushurl)" || :
+fi
+set upstream_pull upstream_push
+if [ ${has_upstream} -eq 1 ]; then
+	upstream_pull="$(config --get remote.upstream.url)" || :
+	upstream_push="$(config --get remote.upstream.pushurl)" || :
+fi
+set username_pull username_push
+if [ ${has_username} -eq 1 ]; then
+	username_pull="$(config --get "remote.${username}.url")" || :
+	username_push="$(config --get "remote.${username}.pushurl")" || :
+fi
+set personal_pull personal_push
+if [ ${has_personal} -eq 1 ]; then
+	personal_pull="$(config --get remote.personal.url)" || :
+	personal_push="$(config --get remote.personal.pushurl)" || :
+fi
+
+set_urls() {
+	pushurl="$1" && shift
+	pullurl="$1" && shift
+
+	reset_all remote.personal.url "$pullurl"
+	reset_all remote.personal.pushurl "$pushurl"
+	reset_all remote.personal.fetch "+refs/heads/*:refs/remotes/upstream/*"
+	add remote.personal.fetch "+refs/pull/*/head:refs/remotes/upstream/pr/*"
+
+	reset_all remote.upstream.url "$pullurl"
+	unset_all remote.upstream.pushurl || :
+	reset_all remote.upstream.fetch "+refs/heads/*:refs/remotes/upstream/*"
+	add remote.upstream.fetch "+refs/pull/*/head:refs/remotes/upstream/pr/*"
+}
+
+rename_remotes() {
+	personal="$1" && shift
+	upstream="$1" && shift
+	$git remote rename "$personal" personal
+	$git remote rename "$upstream" upstream
+}
+
+if [ $(( $has_origin + $has_upstream + $has_username + $has_personal ))\
+		-ne 2 ]; then
+	(
+		echo -n "Branches "
+		[ $has_origin -eq 1 ] && echo -n "origin " || :
+		[ $has_upstream -eq 1 ] && echo -n "upstream " || :
+		[ $has_username -eq 1 ] && echo -n "$username " || :
+		[ $has_personal -eq 1 ] && echo -n "personal " || :
+		echo "all exist.  Cannot proceed."
+	) 1>&2
+	exit 1
+fi
+if [ $has_origin -eq 1 -a $has_upstream -eq 1 ]; then
+
+	[ -z "$origin_push" ] && origin_push="$origin_pull" || :
+	[ -z "$origin_push" ] && origin_push="$user" || :
+	[ -z "$upstream_pull" ] && upstream_pull="$upstream_push" || :
+	[ -z "$upstream_pull" ] && upstream_pull="$project" || :
+	[ -n "$origin_push" -a -n "$upstream_pull" ]
+	if [ "$origin_push" = "$upstream_pull" ]; then
+		if [ "$origin_push" == "$user" ]; then
+			upstream_pull="$project"
+		else
+			origin_push="$user"
+		fi
+	fi
+
+	rename_remotes origin upstream
+	set_urls "$origin_push" "$upstream_pull"
+
+	reset_all branch.master.remote personal
+
+elif [ $has_username -eq 1 -a $has_origin -eq 1 ]; then
+
+	[ -z "$username_push" ] && username_push="$username_pull" || :
+	[ -z "$username_push" ] && username_push="$user" || :
+	[ -z "$origin_pull" ] && origin_pull="$origin_push" || :
+	[ -z "$origin_pull" ] && origin_pull="$project" || :
+	[ -n "$username_push" -a -n "$origin_pull" ]
+	if [ "$username_push" = "$origin_pull" ]; then
+		if [ "$username_push" == "$user" ]; then
+			origin_pull="$project"
+		else
+			username_push="$user"
+		fi
+	fi
+
+	rename_remotes "$username" origin
+	set_urls "$username_push" "$origin_pull"
+
+	reset_all branch.master.remote personal
+
+elif [ $has_username -eq 1 -a $has_upstream -eq 1 ]; then
+
+	[ -z "$username_push" ] && username_push="$username_pull" || :
+	[ -z "$username_push" ] && username_push="$user" || :
+	[ -z "$upstream_pull" ] && upstream_pull="$upstream_push" || :
+	[ -z "$upstream_pull" ] && upstream_pull="$project" || :
+	[ -n "$username_push" -a -n "$upstream_pull" ]
+	if [ "$username_push" = "$upstream_pull" ]; then
+		if [ "$username_push" == "$user" ]; then
+			upstream_pull="$project"
+		else
+			username_push="$user"
+		fi
+	fi
+
+	rename_remotes "$username" upstream
+	set_urls "$username_push" "$upstream_pull"
+
+	reset_all branch.master.remote personal
+
+elif [ $has_personal -eq 1 -a $has_origin -eq 1 ]; then
+
+	[ -z "$personal_push" ] && personal_push="$personal_pull" || :
+	[ -z "$personal_push" ] && personal_push="$user" || :
+	[ -z "$origin_pull" ] && origin_pull="$origin_push" || :
+	[ -z "$origin_pull" ] && origin_pull="$project" || :
+	[ -n "$personal_push" -a -n "$origin_pull" ]
+	if [ "$personal_push" = "$origin_pull" ]; then
+		if [ "$personal_push" == "$user" ]; then
+			origin_pull="$project"
+		else
+			personal_push="$user"
+		fi
+	fi
+
+	rename_remotes personal origin
+	set_urls "$personal_push" "$origin_pull"
+
+	reset_all branch.master.remote personal
+
+elif [ $has_personal -eq 1 -a $has_upstream -eq 1 ]; then
+
+	[ -z "$personal_push" ] && personal_push="$personal_pull" || :
+	[ -z "$personal_push" ] && personal_push="$user" || :
+	[ -z "$upstream_pull" ] && upstream_pull="$upstream_push" || :
+	[ -z "$upstream_pull" ] && upstream_pull="$project" || :
+	[ -n "$personal_push" -a -n "$upstream_pull" ]
+	if [ "$personal_push" = "$upstream_pull" ]; then
+		if [ "$personal_push" == "$user" ]; then
+			upstream_pull="$project"
+		else
+			personal_push="$user"
+		fi
+	fi
+
+	set_urls "$personal_push" "$upstream_pull"
+
+	reset_all branch.master.remote personal
+
+fi

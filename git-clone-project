@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/bin/bash -x
 set -e
 
 user_base=git@github.com
-user_name=vathpela
+user_name=""
 user_repo_name=""
 user_repo_suffix=".git"
 
@@ -34,93 +34,114 @@ error() {
 }
 
 
+declare -a list
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--user-base=*)
-		user_base=${1##--user-base=}
+		user_base="${1##--user-base=}"
 		;;
 	--user-base|-b)
-		user_base=$2
+		user_base="$2"
 		shift
 		;;
 	--user-name=*)
-		user_name=${1##--user-name=}
+		user_name="${1##--user-name=}"
 		;;
 	--user-name|-n)
-		user_name=$2
+		user_name="$2"
 		shift
 		;;
 	--user-repo-name=*)
-		user_repo-name=${1##--user-repo-name=}
+		user_repo_name="${1##--user-repo-name=}"
 		;;
 	--user-repo-name|-r)
-		user_repo-name=$2
+		user_repo_name="$2"
 		shift
 		;;
 	--user-repo-suffix=*)
-		user_repo_suffix=${1##--user-repo-suffix=}
+		user_repo_suffix="${1##--user-repo-suffix=}"
 		;;
 	--user-repo_suffix|-s)
-		user_repo_suffix=$2
+		user_repo_suffix="$2"
 		shift
 		;;
 	--project-base=*)
-		project_base=${1##--project-base=}
+		project_base="${1##--project-base=}"
 		;;
 	--project-base|-B)
-		project_base=$2
+		project_base="$2"
 		shift
 		;;
 	--project-name=*)
-		project_name=${1##--project-name=}
+		project_name="${1##--project-name=}"
 		;;
 	--project-name|-N)
-		project_name=$2
+		project_name="$2"
 		shift
 		;;
 	--project-repo-name=*)
-		project_repo-name=${1##--project-repo-name=}
+		project_repo_name="${1##--project-repo-name=}"
 		;;
 	--project-repo-name|-R)
-		project_repo-name=$2
+		project_repo_name="$2"
 		shift
 		;;
 	--project-repo-suffix=*)
-		project_repo_suffix=${1##--project-repo-suffix=}
+		project_repo_suffix="${1##--project-repo-suffix=}"
 		;;
 	--project-repo-suffix|-S)
-		project_repo_suffix=$2
+		project_repo_suffix="$2"
+		shift
+		;;
+	--git-dir=*)
+		directory="${1##--git-dir=}"
+		;;
+	--git-dir)
+		directory="$2"
 		shift
 		;;
 	*)
-		[ $# == 1 ] || usage 1 1>&2
-		directory=$1
+		list[${list[*]}]="$1"
 		;;
 	esac
 	shift
 done
+eval set -- "${list[@]}"
+
+if [ -z "$directory" ]; then
+	if [ $# -eq 0 ]; then
+		directory="${project_repo_name}"
+	fi
+	if [ -z "${directory}" -a $# -ne 1 ]; then
+		usage 1 1>&2
+	fi
+	directory="$1"
+	shift
+fi
+
+if [ $# -ne 0 ]; then
+	usage 1 1>&2
+fi
 
 [ -z "$user_base" ] && error user-base
-[ -z "$user_name" ] && error user_name
+[ -z "$user_name" ] && error user-name
 [ -z "$project_base" ] && error project-base
-[ -z "$project_name" ] && error project_name
-[ -z "$project_repo_name" ] && project_repo_name=${directory}
+[ -z "$project_name" ] && error project-name
+[ -z "$project_repo_name" ] && project_repo_name="${directory}"
 [ -z "$project_repo_name" ] && error project-repo-name
-[ -z "$user_repo_name" ] && user_repo_name=${project_repo_name}
+[ -z "$user_repo_name" ] && user_repo_name="${project_repo_name}"
 [ -z "$user_repo_name" ] && error user-repo-name
-
-[ -z "$directory" ] && directory=${project_repo_name}
 
 project="${project_base}:${project_name}/${project_repo_name}${project_repo_suffix}"
 user="${user_base}:${user_name}/${user_repo_name}${user_repo_suffix}"
 
 git clone "${project}" -o upstream "${directory}"
-export GIT_DIR=.git
+export GIT_DIR=${directory}/.git
 cp -al "${directory}/.git/refs/remotes/upstream/" "${directory}/.git/refs/remotes/personal/"
-git -C "${directory}" config --local --replace-all remote.personal.url "${project}"
-git -C "${directory}" config --local --replace-all remote.personal.pushurl "${user}"
-git -C "${directory}" config --local --add remote.upstream.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
-git -C "${directory}" config --local --add remote.personal.fetch '+refs/heads/*:refs/remotes/upstream/*'
-git -C "${directory}" config --local --add remote.personal.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
-git -C "${directory}" config --local --replace-all branch.master.remote personal
-git -C "${directory}" config --local --add branch.master.rebase true
+git config --local --replace-all remote.personal.url "${project}"
+git config --local --replace-all remote.personal.pushurl "${user}"
+git config --local --add remote.upstream.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
+git config --local --add remote.personal.fetch '+refs/heads/*:refs/remotes/upstream/*'
+git config --local --add remote.personal.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
+git config --local --replace-all branch.master.remote personal
+git config --local --add branch.master.rebase true
