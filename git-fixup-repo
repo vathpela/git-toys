@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -eE
 
 fatal() {
@@ -142,7 +142,6 @@ user="${user_base}:${user_name}/${user_repo_name}${user_repo_suffix}"
 repo="$(realpath ${directory#/.git}/.git/)"
 [ -d "$repo" ] || \
 	usage 1 "fixup-repo: $directory is not a valid git checkout" 1>&2
-shift
 
 set has_origin has_upstream has_username has_personal
 has_origin=0
@@ -233,11 +232,13 @@ set_urls() {
 	reset_all remote.personal.pushurl "$pushurl"
 	reset_all remote.personal.fetch "+refs/heads/*:refs/remotes/upstream/*"
 	add remote.personal.fetch "+refs/pull/*/head:refs/remotes/upstream/pr/*"
+	add remote.personal.fetch "+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*"
 
 	reset_all remote.upstream.url "$pullurl"
 	unset_all remote.upstream.pushurl || :
 	reset_all remote.upstream.fetch "+refs/heads/*:refs/remotes/upstream/*"
 	add remote.upstream.fetch "+refs/pull/*/head:refs/remotes/upstream/pr/*"
+	add remote.upstream.fetch "+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*"
 }
 
 rename_remotes() {

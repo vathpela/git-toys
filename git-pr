@@ -18,19 +18,61 @@ fi
 
 cmd=$1 && shift
 
+remote=""
+pr=""
+declare -a list
+while [ $# -ge 1 ]; do
+	case $1 in
+	--help|-h|--usage|-\?)
+		usage 0
+		;;
+	--remote=*)
+		remote=${1#--remote=} && shift
+		continue
+		;;
+	--remote)
+		[ $# -ge 2 ] && remote=$2 && shift 2
+		continue
+		;;
+	--pr=*)
+		pr=${1#--pr=} && shift
+		continue
+		;;
+	--pr)
+		[ $# -ge 2 ] && pr=$2 && shift 2
+		continue
+		;;
+	*)
+		list[${#list[*]}]=$1
+		;;
+	esac
+	shift
+done
+eval set -- "${list[$@]}"
+
+if [ -z $pr ]; then
+	pr=${1} && shift
+fi
+pr=${pr#pr/}
+if [ -z $remote ]; then
+	remote=${1:-upstream}
+	shift >/dev/null 2>&1 || :
+fi
+
 case "$cmd" in
-show|list|log|fetch|cherry)
-	cmd=${cmd}-pr
+rev-list)
+	cmd=rev-list-pr
 	;;
-cp|cherry-pick)
-	cmd=cherry-pr
+fetch)
+	cmd=fetch-pr
 	;;
 help)
 	[ $# -lt 1 ] && echo zonk && usage 0 || :
 	exec git-${1}-pr --help
 	;;
 *)
-	usage 1 1>&2
+	read last first <<<$(git pr rev-list --remote "$remote" --pr "$pr" | tr '\n' ' ')
+	exec git ${cmd} "${first}^..${last}" "$@"
 	;;
 esac
 
@@ -42,4 +84,4 @@ for x in "$@" ; do
 	esac
 done
 
-exec git ${cmd} "$@"
+exec git ${cmd} --remote "$remote" --pr "$pr" "$@"

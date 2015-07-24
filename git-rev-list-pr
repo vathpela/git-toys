@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-	echo "git pr log <pull_number> [<remote>]"
+	echo "git pr rev-list [<remote>]"
 	exit $1
 }
 
@@ -47,8 +47,11 @@ if [ -z $remote ]; then
 	shift >/dev/null 2>&1 || :
 fi
 
+#exec git log --color --reverse --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s' --abbrev-commit --remotes=${2:-upstream} --branches="pr/*" --cherry
+
 merge=""
 if [ -f ".git/refs/remotes/${remote}/pr-merge/${pr}" ]; then
-	merge=$(cat ".git/refs/remotes/${remote}/pr-merge/${pr}")
+	merge="refs/remotes/${remote}/pr-merge/${pr}"
 fi
-exec git rev-parse --no-flags "${merge}..refs/remotes/${remote}/pr/${pr}" "$@"
+read child parent <<<$(git rev-parse "${merge}^..refs/remotes/${remote}/pr/${pr}" | tr '^\n' '  ')
+git rev-list "${parent}^..${child}"

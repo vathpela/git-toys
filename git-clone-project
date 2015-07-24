@@ -141,7 +141,9 @@ cp -al "${directory}/.git/refs/remotes/upstream/" "${directory}/.git/refs/remote
 git config --local --replace-all remote.personal.url "${project}"
 git config --local --replace-all remote.personal.pushurl "${user}"
 git config --local --add remote.upstream.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
+git config --local --add remote.upstream.fetch '+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*'
 git config --local --add remote.personal.fetch '+refs/heads/*:refs/remotes/upstream/*'
 git config --local --add remote.personal.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
+git config --local --add remote.personal.fetch '+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*'
 git config --local --replace-all branch.master.remote personal
 git config --local --add branch.master.rebase true
