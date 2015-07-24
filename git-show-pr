@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-	echo "git show-pr <pull_number> [<remote>]"
+	echo "git pr show <pull_number> [<remote>]"
 	exit $1
 }
 

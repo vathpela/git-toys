@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-	echo "git pr <show|list|log|cp|fetch> ..."
+	echo "git pr <show|list|log|cherry-pick|fetch> ..."
 	exit $1
 }
 
@@ -22,7 +22,7 @@ case "$cmd" in
 show|list|log|fetch|cherry)
 	cmd=${cmd}-pr
 	;;
-cp)
+cp|cherry-pick)
 	cmd=cherry-pr
 	;;
 help)

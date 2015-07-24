@@ -2,7 +2,7 @@
 set -e
 
 usage() {
-	echo "git cherry-pr <pr_number> [<remote>]"
+	echo "git pr cherry-pick <pr_number> [<remote>]"
 	exit $1
 }
 
