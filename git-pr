@@ -67,6 +67,9 @@ rev-list)
 fetch)
 	cmd=fetch-pr
 	;;
+merge|rebase|reset)
+	exec git $cmd refs/remotes/${remote}/pr/${pr}
+	;;
 help)
 	[ $# -lt 1 ] && echo zonk && usage 0 || :
 	exec git-${1}-pr --help
