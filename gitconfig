@@ -4,9 +4,10 @@
 	diffstat = !sh -c 'git diff | diffstat -p1' "$@" -
 	fpaste = !sh -c 'git format-patch --stdout "$@" | fpaste' -
 	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
-	list = log --color --abbrev=7 --oneline --abbrev-commit
+	lgv = log --color --graph --pretty=format:'%C(yellow)%h%d %C(bold blue)%cn%C(reset) %C(green)(%cr)%n%C(red)Author: %C(reset)%an%n%C(red)Date:   %C(reset)%ai%n%n%w(0,4,4)%s%n%n%w(0,4,4)%b'
+	list = !sh -c 'git rev-list --color --abbrev=7 --oneline --abbrev-commit "${1:-HEAD}" "${@:2}"' -
+	listr = !sh -c 'git list --reverse "$@"' -
 	news = log -p HEAD@{1}..HEAD@{0}
-	reblog = log --oneline --abbrev=commits --abbrev=7 --reverse
 	showstat = !sh -c 'git show | diffstat -p1' -
 	wam = !sh -c 'curl ${1} | git am' -
 	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -i && xclip -o) || cat)' -
