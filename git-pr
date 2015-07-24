@@ -2,28 +2,44 @@
 set -e
 
 usage() {
-	echo "git pr <show|list|cp|fetch> <pull_number> [<remote>]"
+	echo "git pr <show|list|log|cp|fetch> ..."
 	exit $1
 }
 
-for x in "$@" ; do
-	case "$x" in
-	--help|-h|--usage|-\?)
-		usage 0
-		;;
-	esac
-done
+case "$1" in
+--help|-h|--usage|-\?)
+	usage 0
+	;;
+esac
 
-if [ $# -lt 2 -o $# -gt 3 ]; then
+if [ $# -lt 1 ]; then
 	usage 1 1>&2
 fi
 
 cmd=$1 && shift
+
 case "$cmd" in
-show|list|fetch|cherry)
-	exec git ${cmd}-pr "$@"
+show|list|log|fetch|cherry)
+	cmd=${cmd}-pr
 	;;
 cp)
-	exec git cherry-pr "$@"
+	cmd=cherry-pr
+	;;
+help)
+	[ $# -lt 1 ] && echo zonk && usage 0 || :
+	exec git-${1}-pr --help
+	;;
+*)
+	usage 1 1>&2
 	;;
 esac
+
+for x in "$@" ; do
+	case "$x" in
+	--help|-h|--usage|-\?)
+		exec git-${cmd} --help
+		;;
+	esac
+done
+
+exec git ${cmd} "$@"
