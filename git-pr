@@ -76,7 +76,8 @@ help)
 	;;
 *)
 	read last first <<<$(git pr rev-list --remote "$remote" --pr "$pr" | tr '\n' ' ')
-	exec git ${cmd} "${first}^..${last}" "$@"
+	[ -z "$first" ] || first="${first}^"
+	exec git ${cmd} "${first}..${last}" "$@"
 	;;
 esac
 
