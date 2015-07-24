@@ -2,10 +2,9 @@
 set -e
 
 usage() {
-	echo "git pr show <pull_number> [<remote>]"
+	echo "git pr log <pull_number> [<remote>]"
 	exit $1
 }
-
 
 remote=""
 pr=""
@@ -48,6 +47,8 @@ if [ -z $remote ]; then
 	shift >/dev/null 2>&1 || :
 fi
 
-[ $# -ge 1 ] && shift || :
-
-exec git show --color --abbrev=7 --oneline --abbrev-commit "..refs/remotes/${remote}/pr/${pr}" "$@"
+merge=""
+if [ -f ".git/refs/remotes/${remote}/pr-merge/${pr}" ]; then
+	merge=$(cat ".git/refs/remotes/${remote}/pr-merge/${pr}")
+fi
+exec git rev-parse --no-flags "${merge}..refs/remotes/${remote}/pr/${pr}" "$@"

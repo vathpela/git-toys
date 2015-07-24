@@ -6,16 +6,46 @@ usage() {
 	exit $1
 }
 
-for x in "$@" ; do
-	case "$x" in
+remote=""
+pr=""
+declare -a list
+while [ $# -ge 1 ]; do
+	case $1 in
 	--help|-h|--usage|-\?)
 		usage 0
 		;;
+	--remote=*)
+		remote=${1#--remote=} && shift
+		continue
+		;;
+	--remote)
+		[ $# -ge 2 ] && remote=$2 && shift 2
+		continue
+		;;
+	--pr=*)
+		pr=${1#--pr=} && shift
+		continue
+		;;
+	--pr)
+		[ $# -ge 2 ] && pr=$2 && shift 2
+		continue
+		;;
+	*)
+		list[${#list[*]}]=$1
+		;;
 	esac
+	shift
 done
+eval set -- "${list[$@]}"
 
-if [ $# -lt 1 -o $# -gt 2 ]; then
-	usage 1 1>&2
+if [ -z $pr ]; then
+	pr=${1} && shift
+fi
+pr=${pr#pr/}
+if [ -z $remote ]; then
+	remote=${1:-upstream}
+	shift >/dev/null 2>&1 || :
 fi
 
-exec git log --color --abbrev=7 --oneline --abbrev-commit "..refs/remotes/${2:-upstream}/pr/${1#pr/}"
+parent=$(git merge-base -a refs/remotes/${remote}/pr/${pr} refs/remotes/${remote}/pr-merge/4^)
+exec git lgv "${parent}..refs/remotes/${remote}/pr/${pr}" "$@"
