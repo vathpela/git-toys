@@ -42,8 +42,9 @@ if [ -z $pr ]; then
 	pr=${1} && shift
 fi
 pr=${pr#pr/}
+upstream_name=$(git config --get vathpela.toys.upstream) || upstream_name=upstream
 if [ -z $remote ]; then
-	remote=${1:-upstream}
+	remote=${1:-${upstream_name}}
 	shift >/dev/null 2>&1 || :
 fi
 

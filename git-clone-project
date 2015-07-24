@@ -1,26 +1,5 @@
-#!/bin/bash -x
+#!/bin/bash
 set -e
-
-user_base=git@github.com
-user_name=""
-user_repo_name=""
-user_repo_suffix=".git"
-
-project_base=git@github.com
-project_name=""
-project_repo_name=""
-project_repo_suffix=".git"
-
-directory=""
-
-[ -n "$GIT_USER_BASE" ] && user_base="$GIT_USER_BASE" || :
-[ -n "$GIT_USER_NAME" ] && user_name="$GIT_USER_NAME" || :
-[ -n "$GIT_USER_REPO_NAME" ] && user_repo_name="$GIT_USER_REPO_NAME" || :
-[ -n "$GIT_USER_REPO_SUFFIX" ] && user_repo_suffix="$GIT_USER_REPO_SUFFIX" || :
-[ -n "$GIT_PROJECT_BASE" ] && project_base="$GIT_PROJECT_BASE" || :
-[ -n "$GIT_PROJECT_NAME" ] && project_name="$GIT_PROJECT_NAME" || :
-[ -n "$GIT_PROJECT_REPO_NAME" ] && project_repo_name="$GIT_PROJECT_REPO_NAME" || :
-[ -n "$GIT_PROJECT_REPO_SUFFIX" ] && project_repo_suffix="$GIT_PROJECT_REPO_SUFFIX" || :
 
 usage()
 {
@@ -33,7 +12,32 @@ error() {
 	usage 1 1>&2
 }
 
+get_config()
+{
+	suffix=$1 && shift
+	git config -f ~/.gitconfig --get vathpela.toys.${suffix} 2>/dev/null
+}
 
+user_base=$(get_config user_base) || user_base=git@github.com
+user_name=$(get_config user_name) || user_name=$(whoami)
+user_repo_name=$(get_config user_repo_name) || user_repo_name=""
+user_repo_suffix=$(get_config user_repo_suffix) || user_repo_suffix=".git"
+
+project_base=$(get_config project_base) || project_base=git@github.com
+project_name=$(get_config project_name) || project_name=$(whoami)
+project_repo_name=$(get_config project_repo_name) || project_repo_name=""
+project_repo_suffix=$(get_config project_repo_suffix) || project_repo_suffix=".git"
+
+[ -n "$GIT_USER_BASE" ] && user_base="$GIT_USER_BASE" || :
+[ -n "$GIT_USER_NAME" ] && user_name="$GIT_USER_NAME" || :
+[ -n "$GIT_USER_REPO_NAME" ] && user_repo_name="$GIT_USER_REPO_NAME" || :
+[ -n "$GIT_USER_REPO_SUFFIX" ] && user_repo_suffix="$GIT_USER_REPO_SUFFIX" || :
+[ -n "$GIT_PROJECT_BASE" ] && project_base="$GIT_PROJECT_BASE" || :
+[ -n "$GIT_PROJECT_NAME" ] && project_name="$GIT_PROJECT_NAME" || :
+[ -n "$GIT_PROJECT_REPO_NAME" ] && project_repo_name="$GIT_PROJECT_REPO_NAME" || :
+[ -n "$GIT_PROJECT_REPO_SUFFIX" ] && project_repo_suffix="$GIT_PROJECT_REPO_SUFFIX" || :
+
+directory=""
 declare -a list
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -135,15 +139,18 @@ fi
 project="${project_base}:${project_name}/${project_repo_name}${project_repo_suffix}"
 user="${user_base}:${user_name}/${user_repo_name}${user_repo_suffix}"
 
-git clone "${project}" -o upstream "${directory}"
+upstream_name=$(git config --get vathpela.toys.upstream) || upstream_name=upstream
+personal_name=$(git config --get vathpela.toys.personal) || personal_name=personal
+
+git clone "${project}" -o "$upstream_name" "${directory}"
 export GIT_DIR=${directory}/.git
-cp -al "${directory}/.git/refs/remotes/upstream/" "${directory}/.git/refs/remotes/personal/"
-git config --local --replace-all remote.personal.url "${project}"
-git config --local --replace-all remote.personal.pushurl "${user}"
-git config --local --add remote.upstream.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
-git config --local --add remote.upstream.fetch '+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*'
-git config --local --add remote.personal.fetch '+refs/heads/*:refs/remotes/upstream/*'
-git config --local --add remote.personal.fetch '+refs/pull/*/head:refs/remotes/upstream/pr/*'
-git config --local --add remote.personal.fetch '+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*'
-git config --local --replace-all branch.master.remote personal
+cp -al "${directory}/.git/refs/remotes/${upstream_name}/" "${directory}/.git/refs/remotes/${personal_name}/"
+git config --local --replace-all remote.${personal_name}.url "${project}"
+git config --local --replace-all remote.${personal_name}.pushurl "${user}"
+git config --local --add remote.${upstream_name}.fetch "+refs/pull/*/head:refs/remotes/${upstream_name}/pr/*"
+git config --local --add remote.${upstream_name}.fetch "+refs/pull/*/merge:refs/remotes/${upstream_name}/pr-merge/*"
+git config --local --add remote.${personal_name}.fetch "+refs/heads/*:refs/remotes/${upstream_name}/*"
+git config --local --add remote.${personal_name}.fetch "+refs/pull/*/head:refs/remotes/${upstream_name}/pr/*"
+git config --local --add remote.${personal_name}.fetch "+refs/pull/*/merge:refs/remotes/${upstream_name}/pr-merge/*"
+git config --local --replace-all branch.master.remote "${personal_name}"
 git config --local --add branch.master.rebase true

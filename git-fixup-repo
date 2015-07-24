@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 set -eE
 
 fatal() {
@@ -18,17 +18,21 @@ error() {
 	usage 1 1>&2
 }
 
-user_base=git@github.com
-user_name=""
-user_repo_name=""
-user_repo_suffix=".git"
+get_config()
+{
+	suffix=$1 && shift
+	git config -f ~/.gitconfig --get vathpela.toys.${suffix} 2>/dev/null
+}
 
-project_base=git@github.com
-project_name=""
-project_repo_name=""
-project_repo_suffix=".git"
+user_base=$(get_config user_base) || user_base=git@github.com
+user_name=$(get_config user_name) || user_name=$(whoami)
+user_repo_name=$(get_config user_repo_name) || user_repo_name=""
+user_repo_suffix=$(get_config user_repo_suffix) || user_repo_suffix=".git"
 
-directory=""
+project_base=$(get_config project_base) || project_base=git@github.com
+project_name=$(get_config project_name) || project_name=$(whoami)
+project_repo_name=$(get_config project_repo_name) || project_repo_name=""
+project_repo_suffix=$(get_config project_repo_suffix) || project_repo_suffix=".git"
 
 [ -n "$GIT_USER_BASE" ] && user_base="$GIT_USER_BASE" || :
 [ -n "$GIT_USER_NAME" ] && user_name="$GIT_USER_NAME" || :
@@ -39,6 +43,7 @@ directory=""
 [ -n "$GIT_PROJECT_REPO_NAME" ] && project_repo_name="$GIT_PROJECT_REPO_NAME" || :
 [ -n "$GIT_PROJECT_REPO_SUFFIX" ] && project_repo_suffix="$GIT_PROJECT_REPO_SUFFIX" || :
 
+directory=""
 declare -a list
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -143,12 +148,17 @@ repo="$(realpath ${directory#/.git}/.git/)"
 [ -d "$repo" ] || \
 	usage 1 "fixup-repo: $directory is not a valid git checkout" 1>&2
 
+upstream_name=$(git config --get vathpela.toys.upstream) || upstream_name=upstream
+personal_name=$(git config --get vathpela.toys.personal) || personal_name=personal
+
 set has_origin has_upstream has_username has_personal
 has_origin=0
 has_upstream=0
 has_username=0
 has_user_name=0
 has_personal=0
+has_old_personal=0
+has_old_upstream=0
 username="$(whoami)"
 remotes=" $(git remote | tr '\n' ' ')"
 for x in $remotes ; do
@@ -156,17 +166,23 @@ for x in $remotes ; do
 	origin)
 		has_origin=1
 		;;
-	upstream)
-		has_upstream=1
-		;;
 	${username})
 		has_username=1
 		;;
 	${user_name})
 		has_user_name=1
 		;;
-	personal)
+	${personal_name})
 		has_personal=1
+		;;
+	personal)
+		has_old_personal=1
+		;;
+	${upstream_name})
+		has_upstream=1
+		;;
+	upstream)
+		has_old_upstream=1
 		;;
 	*)
 		;;
@@ -203,6 +219,37 @@ unset_all() {
 	config --unset-all "$@"
 }
 
+rename_remotes() {
+	personal="$1" && shift
+	upstream="$1" && shift
+	unset_all "remote.${personal}.fetch"
+	add "remote.${personal}.fetch" "+refs/heads/*:refs/remotes/${personal}/*"
+	$git remote rename "$personal" "$personal_name"
+	unset_all remote."$upstream".fetch
+	add "remote.${upstream}.fetch" "+refs/heads/*:refs/remotes/${upstream}/*"
+	$git remote rename "$upstream" "$upstream_name"
+}
+
+if [ $has_old_personal -eq 1 ]; then
+	unset_all remote.personal.fetch
+	add remote.personal.fetch "+refs/heads/*:refs/remotes/personal/*"
+	$git remote rename personal "$personal_name"
+	reset_all remote.${personal_name}.fetch "+refs/heads/*:refs/remotes/${upstream_name}/*"
+	add remote.${personal_name}.fetch "+refs/pull/*/head:refs/remotes/${upstream_name}/pr/*"
+	add remote.${personal_name}.fetch "+refs/pull/*/merge:refs/remotes/${upstream_name}/pr-merge/*"
+	has_personal=1
+fi
+
+if [ $has_old_upstream -eq 1 ]; then
+	unset_all remote.upstream.fetch
+	add remote.upstream.fetch "+refs/heads/*:refs/remotes/upstream/*"
+	$git remote rename upstream "$upstream_name"
+	reset_all remote.${upstream_name}.fetch "+refs/heads/*:refs/remotes/${upstream_name}/*"
+	add remote.${upstream_name}.fetch "+refs/pull/*/head:refs/remotes/${upstream_name}/pr/*"
+	add remote.${upstream_name}.fetch "+refs/pull/*/merge:refs/remotes/${upstream_name}/pr-merge/*"
+	has_upstream=1
+fi
+
 set origin_pull origin_push
 if [ ${has_origin} -eq 1 ]; then
 	origin_pull="$(config --get remote.origin.url)" || :
@@ -210,8 +257,8 @@ if [ ${has_origin} -eq 1 ]; then
 fi
 set upstream_pull upstream_push
 if [ ${has_upstream} -eq 1 ]; then
-	upstream_pull="$(config --get remote.upstream.url)" || :
-	upstream_push="$(config --get remote.upstream.pushurl)" || :
+	upstream_pull="$(config --get remote.${upstream_name}.url)" || :
+	upstream_push="$(config --get remote.${upstream_name}.pushurl)" || :
 fi
 set username_pull username_push
 if [ ${has_username} -eq 1 ]; then
@@ -220,32 +267,25 @@ if [ ${has_username} -eq 1 ]; then
 fi
 set personal_pull personal_push
 if [ ${has_personal} -eq 1 ]; then
-	personal_pull="$(config --get remote.personal.url)" || :
-	personal_push="$(config --get remote.personal.pushurl)" || :
+	personal_pull="$(config --get remote.${personal_name}.url)" || :
+	personal_push="$(config --get remote.${personal_name}.pushurl)" || :
 fi
 
 set_urls() {
 	pushurl="$1" && shift
 	pullurl="$1" && shift
 
-	reset_all remote.personal.url "$pullurl"
-	reset_all remote.personal.pushurl "$pushurl"
-	reset_all remote.personal.fetch "+refs/heads/*:refs/remotes/upstream/*"
-	add remote.personal.fetch "+refs/pull/*/head:refs/remotes/upstream/pr/*"
-	add remote.personal.fetch "+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*"
+	reset_all remote.${personal_name}.url "$pullurl"
+	reset_all remote.${personal_name}.pushurl "$pushurl"
+	reset_all remote.${personal_name}.fetch "+refs/heads/*:refs/remotes/${upstream_name}/*"
+	add remote.${personal_name}.fetch "+refs/pull/*/head:refs/remotes/${upstream_name}/pr/*"
+	add remote.${personal_name}.fetch "+refs/pull/*/merge:refs/remotes/${upstream_name}/pr-merge/*"
 
-	reset_all remote.upstream.url "$pullurl"
-	unset_all remote.upstream.pushurl || :
-	reset_all remote.upstream.fetch "+refs/heads/*:refs/remotes/upstream/*"
-	add remote.upstream.fetch "+refs/pull/*/head:refs/remotes/upstream/pr/*"
-	add remote.upstream.fetch "+refs/pull/*/merge:refs/remotes/upstream/pr-merge/*"
-}
-
-rename_remotes() {
-	personal="$1" && shift
-	upstream="$1" && shift
-	$git remote rename "$personal" personal
-	$git remote rename "$upstream" upstream
+	reset_all remote.${upstream_name}.url "$pullurl"
+	unset_all remote.${upstream_name}.pushurl || :
+	reset_all remote.${upstream_name}.fetch "+refs/heads/*:refs/remotes/${upstream_name}/*"
+	add remote.${upstream_name}.fetch "+refs/pull/*/head:refs/remotes/${upstream_name}/pr/*"
+	add remote.${upstream_name}.fetch "+refs/pull/*/merge:refs/remotes/${upstream_name}/pr-merge/*"
 }
 
 if [ $(( $has_origin + $has_upstream + $has_username + $has_personal ))\
@@ -275,10 +315,10 @@ if [ $has_origin -eq 1 -a $has_upstream -eq 1 ]; then
 		fi
 	fi
 
-	rename_remotes origin upstream
+	rename_remotes origin "$upstream_name"
 	set_urls "$origin_push" "$upstream_pull"
 
-	reset_all branch.master.remote personal
+	reset_all branch.master.remote "$personal_name"
 
 elif [ $has_username -eq 1 -a $has_origin -eq 1 ]; then
 
@@ -298,7 +338,7 @@ elif [ $has_username -eq 1 -a $has_origin -eq 1 ]; then
 	rename_remotes "$username" origin
 	set_urls "$username_push" "$origin_pull"
 
-	reset_all branch.master.remote personal
+	reset_all branch.master.remote "$personal_name"
 
 elif [ $has_username -eq 1 -a $has_upstream -eq 1 ]; then
 
@@ -315,10 +355,10 @@ elif [ $has_username -eq 1 -a $has_upstream -eq 1 ]; then
 		fi
 	fi
 
-	rename_remotes "$username" upstream
+	rename_remotes "$username" "$upstream_name"
 	set_urls "$username_push" "$upstream_pull"
 
-	reset_all branch.master.remote personal
+	reset_all branch.master.remote "$personal_name"
 
 elif [ $has_personal -eq 1 -a $has_origin -eq 1 ]; then
 
@@ -335,10 +375,10 @@ elif [ $has_personal -eq 1 -a $has_origin -eq 1 ]; then
 		fi
 	fi
 
-	rename_remotes personal origin
+	rename_remotes "$personal_name" origin
 	set_urls "$personal_push" "$origin_pull"
 
-	reset_all branch.master.remote personal
+	reset_all branch.master.remote "$personal_name"
 
 elif [ $has_personal -eq 1 -a $has_upstream -eq 1 ]; then
 
@@ -357,6 +397,6 @@ elif [ $has_personal -eq 1 -a $has_upstream -eq 1 ]; then
 
 	set_urls "$personal_push" "$upstream_pull"
 
-	reset_all branch.master.remote personal
+	reset_all branch.master.remote "$personal_name"
 
 fi
