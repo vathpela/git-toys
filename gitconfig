@@ -1,12 +1,12 @@
 [alias]
-	list-changes = log --color --abbrev=7 --oneline --abbrev-commit
-	fpaste = !sh -c 'git format-patch --stdout "$@" | fpaste' -
-	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -i && xclip -o) || cat)' -
-	wam = !sh -c 'curl ${1} | git am' -
-	diffstat = !sh -c 'git diff | diffstat -p1' "$@" -
-	showstat = !sh -c 'git show | diffstat -p1' -
-	news = log -p HEAD@{1}..HEAD@{0}
 	commit = !/home/pjones/.bin/noarch/git-commit-meta "$@"
 	cp = cherry-pick
-	reblog = log --oneline --abbrev=commits --abbrev=7 --reverse
+	diffstat = !sh -c 'git diff | diffstat -p1' "$@" -
+	fpaste = !sh -c 'git format-patch --stdout "$@" | fpaste' -
 	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	list = log --color --abbrev=7 --oneline --abbrev-commit
+	news = log -p HEAD@{1}..HEAD@{0}
+	reblog = log --oneline --abbrev=commits --abbrev=7 --reverse
+	showstat = !sh -c 'git show | diffstat -p1' -
+	wam = !sh -c 'curl ${1} | git am' -
+	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -i && xclip -o) || cat)' -
