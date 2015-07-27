@@ -55,4 +55,4 @@ if [ -f ".git/refs/remotes/${remote}/pr-merge/${pr}" ]; then
 	merge="refs/remotes/${remote}/pr-merge/${pr}^"
 fi
 read child parent <<<$(git rev-parse "${merge}..refs/remotes/${remote}/pr/${pr}" | tr '^\n' '  ')
-git rev-list "${parent}..${child}"
+git rev-list "${parent:+${parent}^}..${child}"
