@@ -48,11 +48,8 @@ if [ -z $remote ]; then
 	shift >/dev/null 2>&1 || :
 fi
 
-#exec git log --color --reverse --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s' --abbrev-commit --remotes=${2:-upstream} --branches="pr/*" --cherry
-
 merge=""
 if [ -f ".git/refs/remotes/${remote}/pr-merge/${pr}" ]; then
 	merge="refs/remotes/${remote}/pr-merge/${pr}^"
 fi
-read child parent <<<$(git rev-parse "${merge}..refs/remotes/${remote}/pr/${pr}" | tr '^\n' '  ')
-git rev-list "${parent:+${parent}^}..${child}"
+eval git rev-list $(git rev-parse --sq --revs-only --no-flags --default HEAD "${merge}..refs/remotes/${remote}/pr/${pr}")
