@@ -61,9 +61,6 @@ if [ -z $remote ]; then
 fi
 
 case "$cmd" in
-rev-list)
-	cmd=rev-list-pr
-	;;
 fetch)
 	cmd=fetch-pr
 	;;
@@ -75,9 +72,12 @@ help)
 	exec git-${1}-pr --help
 	;;
 *)
-	read last first <<<$(git pr rev-list --remote "$remote" --pr "$pr" | tr '\n' ' ')
-	[ -z "$first" ] || first="${first}^"
-	exec git ${cmd} "${first}..${last}" "$@"
+	merge=""
+	if [ -f ".git/refs/remotes/${remote}/pr-merge/${pr}" ]; then
+		merge="refs/remotes/${remote}/pr-merge/${pr}^"
+	fi
+	revs=$(eval git rev-parse --sq --revs-only --no-flags --default HEAD "${merge}..refs/remotes/${remote}/pr/${pr}")
+	eval exec git "$cmd" $revs
 	;;
 esac
 
