@@ -51,4 +51,4 @@ fi
 [ $# -ge 1 ] && shift || :
 
 git fetch -fu "${remote}" "refs/pull/${pr/}/head:refs/remotes/${remote}/pr/${pr}"
-git pr log "${pr}" "${remote}" "$@"
+git pr list "${pr}" "${remote}" "$@"
