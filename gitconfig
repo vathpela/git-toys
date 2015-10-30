@@ -1,4 +1,5 @@
 [alias]
+	an = add-next
 	commit = !/home/pjones/.bin/noarch/git-commit-meta "$@"
 	cp = cherry-pick
 	diffstat = !sh -c 'git diff | diffstat -p1' "$@" -

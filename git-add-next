@@ -1,0 +1,29 @@
+#!/bin/bash -x
+set -e
+
+. git-sh-setup
+
+require_work_tree
+cd_to_toplevel
+
+if ! [ -d $GIT_DIR/rebase-merge/ ]; then
+	echo "git add-next: not rebasing." 1>&2
+	exit 1
+fi
+RD="$GIT_DIR/rebase-merge"
+
+if ! [ -e "$RD/head-name" -a -e "$RD/stopped-sha" ]; then
+	echo "git add-next: omg so confused." 1>&2
+	exit 2
+fi
+
+if [ "$(cat "$RD/msgnum")" -eq "$(cat "$RD/end")" ]; then
+	echo "git add-next: on last commit, can't add next" 1>&2
+	exit 3
+fi
+
+sha=$(cat "$RD/stopped-sha")
+head=$(cat "$RD/head-name")
+rev=$(git rev-list ${sha}..${head} | tail -1 )
+git show $rev | patch -p1 && git add -p || :
+git commit && git reset --hard
