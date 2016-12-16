@@ -78,7 +78,12 @@ help)
 	fi
 	revs=$(eval git rev-parse --sq --revs-only --no-flags "${merge}..refs/remotes/${remote}/pr/${pr}")
 	[ -n "$revs" ] || exit 0
-	eval exec git "$cmd" $revs
+	case "$cmd" in
+	show|lg|log)
+		extra=--reverse
+		;;
+	esac
+	eval exec git "$cmd" $extra $revs
 	;;
 esac
 
