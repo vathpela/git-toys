@@ -12,4 +12,3 @@
 	showstat = !sh -c 'git show | diffstat -p1' -
 	wam = !sh -c 'curl ${1} | git am' -
 	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -i && xclip -o) || cat)' -
-	touch = !sh -c 'git diff-tree -z --name-only -r "$@" | xargs -0 touch ' -
