@@ -11,4 +11,5 @@
 	news = log -p HEAD@{1}..HEAD@{0}
 	showstat = !sh -c 'git show | diffstat -p1' -
 	wam = !sh -c 'curl ${1} | git am' -
-	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -i && xclip -o) || cat)' -
+	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -selection clipboard -i && xclip -selection clipboard -o) || cat)' -
+	xclip = !sh -c 'git show "$@" | ([ -n "$DISPLAY" ] && (xclip -selection clipboard -i && xclip -selection clipboard -o) || cat)' -
