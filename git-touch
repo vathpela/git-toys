@@ -1,0 +1,83 @@
+#!/bin/bash
+# set -e
+
+SUBDIRECTORY_OK=Yes
+OPTIONS_KEEPDASHDASH=
+OPTIONS_STUCKLONG=t
+OPTIONS_SPEC="\
+git touch [options] -- <refs>
+
+touch piles of files
+--
+h,help show the help
+usage* show the help
+r,remote!=remote <pr> is relative to the specified remote
+"
+
+. /usr/libexec/git-core/git-sh-setup
+set_reflog_action touch
+require_work_tree_exists
+cd_to_toplevel
+
+
+upstream_name=""
+declare -a list
+while [ $# -ge 1 ]; do
+	case $1 in
+	--remote=*)
+		upstream_name=${1#--remote=} && shift
+		continue
+		;;
+	--)
+		shift
+		break
+		;;
+	*)
+		list[${#list[*]}]=$1
+		;;
+	esac
+	shift
+done
+while [ $# -ne 0 ]; do
+	list[${#list[*]}]="$1" && shift
+done
+eval set -- "${list[$@]}"
+
+if [ -z "$upstream_name" ]; then
+	case "$#" in
+	0)
+		if ! upstream_name=$(git rev-parse --symbolic-full-name \
+                        --verify -q @{upstream} 2>/dev/null)
+                then
+                        . /usr/libexec/git-core/git-parse-remote
+                        error_on_missing_default_upstream "touch" "touch" \
+                                "against" "git touch <refs>"
+                fi
+		;;
+	*)
+		upstream_name='--root'
+		;;
+	esac
+fi
+
+echo "upstream_name: $upstream_name"
+echo "args: $@"
+
+#	if [ -f "${GIT_DIR}/refs/remotes/${remote}/pr-merge/${pr}" ]; then
+#		merge="refs/remotes/${remote}/pr-merge/${pr}^"
+#	fi
+#	revs=$(eval git rev-parse --sq --revs-only --no-flags "${merge}..refs/remotes/${remote}/pr/${pr}")
+#	[ -n "$revs" ] || exit 0
+#	eval exec git "$cmd" $revs
+#	;;
+#esac
+#
+#for x in "$@" ; do
+#	case "$x" in
+#	--help|-h|--usage|-\?)
+#		exec git-${cmd} --help
+#		;;
+#	esac
+#done
+#
+#exec git ${cmd} --remote "$remote" --pr "$pr" "$@"
