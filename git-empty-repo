@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+# git-empty-repo
+# Copyright 2017 Peter Jones <pjones@redhat.com>
+#
+# Distributed under terms of the GPLv3 license.
+#
+
+set -e
+
+remote_exists() {
+	local remote_name=$1 && shift
+	git remote get-url ${remote_name} >/dev/null 2>&1
+}
+
+branch_exists() {
+	local branch_name=$1 && shift
+	git branch | grep -q "^. ${branch_name}$"
+}
+
+get_current_branch() {
+	git branch | grep '^\* ' | cut -d\  -f2
+}
+
+SUBDIRECTORY_OK=No
+OPTIONS_SPEC="\
+git empty-repo [options]
+
+switch to using per-branch git work-trees in subdirs of an empty checkout
+--
+h,help show the help
+usage* show the help
+
+a,abyss-repo!=<repourl> for abyss repo
+r,abyss-remote!=<name> for abyss repo remote
+b,abyss-remote-branch!=<name> for remote abyss branch
+l,abyss-local-branch!=<name> for local abyss branch"
+OPTIONS_KEEPDASHDASH=
+OPTIONS_STUCKLONG=t
+
+. /usr/libexec/git-core/git-sh-setup
+
+set -u
+
+ABYSS_REPO=git://github.com/vathpela/abyss.git
+ABYSS_REMOTE=abyss
+ABYSS_REMOTE_BRANCH=gitignore
+ABYSS_BRANCH=empty
+declare -a list
+while [ $# -ge 1 ]; do
+	case $1 in
+	--abyss-repo=*)
+		ABYSS_REPO=${1#--abyss-repo=} && shift
+		continue
+		;;
+	--abyss-remote=*)
+		ABYSS_REMOTE=${1#--abyss-remote=} && shift
+		continue
+		;;
+	--abyss-remote-branch=*)
+		ABYSS_REMOTE_BRANCH=${1#--abyss-remote-branch=} && shift
+		continue
+		;;
+	--abyss-local-branch=*)
+		ABYSS_BRANCH=${1#--abyss-local-branch=} && shift
+		continue
+		;;
+	--)
+		shift
+		break
+		;;
+	*)
+		die "Unknown argument: ${1}"
+		;;
+	esac
+	shift
+done
+
+CURRENT_BRANCH=$(get_current_branch)
+if ! remote_exists ${ABYSS_REMOTE} ; then
+	git remote add abyss ${ABYSS_REPO}
+	git fetch abyss
+fi
+
+if ! branch_exists ${ABYSS_BRANCH} ; then
+	git branch ${ABYSS_BRANCH} ${ABYSS_REMOTE}/${ABYSS_REMOTE_BRANCH}
+fi
+
+git checkout ${ABYSS_BRANCH}
+git worktree add ${CURRENT_BRANCH} ${CURRENT_BRANCH}
+
+# vim:fenc=utf-8:tw=75
