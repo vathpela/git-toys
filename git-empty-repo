@@ -93,12 +93,12 @@ fi
 
 git checkout ${ABYSS_BRANCH}
 git worktree add ${CURRENT_BRANCH} ${CURRENT_BRANCH}
-for x in branch.${ABYSS_BRANCH}{.remote,.merge} remote.${ABYSS_REMOTE}{.url,.fetch} ; do
-	while :; do
-		git config --unset-all ${x} || break
-	done
-done
-git config --remove-section branch.${ABYSS_BRANCH}
-git config --remove-section remote.${ABYSS_REMOTE}
+if [ -v CURRENT_REMOTE ]; then
+	git config --replace-all remote.${ABYSS_REMOTE}.url $(git config --get remote.${CURRENT_REMOTE}.url)
+	git config --replace-all remote.${ABYSS_REMOTE}.fetch $(git config --get remote.${CURRENT_REMOTE}.fetch)
+else
+	git config --unset remote.${ABYSS_REMOTE}.url
+	git config --unset remote.${ABYSS_REMOTE}.fetch
+fi
 
 # vim:fenc=utf-8
