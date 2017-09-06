@@ -7,6 +7,7 @@
 #
 
 set -e
+set -x
 
 remote_exists() {
 	local remote_name=$1 && shift
@@ -81,6 +82,11 @@ if ! remote_exists ${ABYSS_REMOTE} ; then
 	git remote add abyss ${ABYSS_REPO}
 	git fetch abyss
 fi
+if remote_exists origin ; then
+	CURRENT_REMOTE=origin
+elif git config --get branch.${CURRENT_BRANCH}.remote >/dev/null 2>&1 ; then
+	CURRENT_REMOTE=$(git config --get branch.${CURRENT_BRANCH}.remote)
+fi
 
 if ! branch_exists ${ABYSS_BRANCH} ; then
 	git branch ${ABYSS_BRANCH} ${ABYSS_REMOTE}/${ABYSS_REMOTE_BRANCH}
@@ -88,5 +94,16 @@ fi
 
 git checkout ${ABYSS_BRANCH}
 git worktree add ${CURRENT_BRANCH} ${CURRENT_BRANCH}
+if [ -v CURRENT_REMOTE ]; then
+	git config --unset remote.${ABYSS_REMOTE}.url
+	git config --unset remote.${ABYSS_REMOTE}.fetch
+	git config --list | grep "^remote\.${CURRENT_REMOTE}\." | \
+		sed -e "s/^remote\.${CURRENT_REMOTE}\./remote.${ABYSS_REMOTE}./" -e 's/=/ /' | \
+		xargs -n 2 git config --add 
+else
+	git config --unset remote.${ABYSS_REMOTE}.url
+	git config --unset remote.${ABYSS_REMOTE}.fetch
+	git config --unset remote.${ABYSS_REMOTE}
+fi
 
-# vim:fenc=utf-8:tw=75
+# vim:fenc=utf-8
