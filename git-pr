@@ -54,7 +54,10 @@ if [ -z "$pr" ]; then
 fi
 pr=${pr#pr/}
 [ -n "$pr" ] || die "No pull request specified."
-upstream_name=$(git config --get vathpela.toys.prremote) || upstream_name=$(git config --get vathpela.toys.upstream) || upstream_name=upstream
+upstream_name=$(git config --get vathpela.toys.prremote) || \
+    upstream_name=$(git config --get vathpela.toys.upstream) || \
+    upstream_name=$(git remote -v | grep -q '^origin[[:space:]]*git@github.com:' && echo origin) || \
+    upstream_name=upstream
 if [ -z "$remote" ]; then
 	remote=${1:-${upstream_name}}
 	shift >/dev/null 2>&1 || :
