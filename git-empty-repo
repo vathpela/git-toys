@@ -7,7 +7,6 @@
 #
 
 set -e
-set -x
 
 remote_exists() {
 	local remote_name=$1 && shift
@@ -94,16 +93,12 @@ fi
 
 git checkout ${ABYSS_BRANCH}
 git worktree add ${CURRENT_BRANCH} ${CURRENT_BRANCH}
-if [ -v CURRENT_REMOTE ]; then
-	git config --unset remote.${ABYSS_REMOTE}.url
-	git config --unset remote.${ABYSS_REMOTE}.fetch
-	git config --list | grep "^remote\.${CURRENT_REMOTE}\." | \
-		sed -e "s/^remote\.${CURRENT_REMOTE}\./remote.${ABYSS_REMOTE}./" -e 's/=/ /' | \
-		xargs -n 2 git config --add 
-else
-	git config --unset remote.${ABYSS_REMOTE}.url
-	git config --unset remote.${ABYSS_REMOTE}.fetch
-	git config --unset remote.${ABYSS_REMOTE}
-fi
+for x in branch.${ABYSS_BRANCH}{.remote,.merge} remote.${ABYSS_REMOTE}{.url,.fetch} ; do
+	while :; do
+		git config --unset-all ${x} || break
+	done
+done
+git config --remove-section branch.${ABYSS_BRANCH}
+git config --remove-section remote.${ABYSS_REMOTE}
 
 # vim:fenc=utf-8
