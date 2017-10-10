@@ -44,7 +44,7 @@ done
 while [ $# -ne 0 ]; do
 	list[${#list[*]}]="$1" && shift
 done
-eval set -- "${list[$@]}"
+eval set -- "${list[@]}"
 [ -n "$cmd" ] || die "No command specified."
 
 if [ -z "$pr" ]; then
@@ -71,7 +71,7 @@ merge|rebase|reset)
 	exec git "$cmd" refs/remotes/${remote}/pr/${pr} "$@"
 	;;
 help)
-	[ $# -lt 1 ] && echo zonk && usage 0 || :
+	[ $# -lt 1 ] && usage 0 || :
 	exec git-${1}-pr --help
 	;;
 *)
