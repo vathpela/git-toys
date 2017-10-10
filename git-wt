@@ -1,0 +1,98 @@
+#!/bin/bash
+set -e
+
+SUBDIRECTORY_OK=Yes
+OPTIONS_SPEC="\
+git wt [options] <cmd> ...
+
+manipulate pull requests
+--
+h,help show the help
+usage* show the help
+r,remote!=remote <pr> is relative to the specified remote
+n,name!=request specify branch and worktree name"
+OPTIONS_KEEPDASHDASH=
+OPTIONS_STUCKLONG=t
+
+. /usr/libexec/git-core/git-sh-setup
+
+remote=""
+branch=""
+remote_branch=""
+declare -a list
+while [ $# -ge 1 ]; do
+	case $1 in
+	--remote?branch=*)
+		remote_branch=${1#--remote?branch=} && shift
+		continue
+		;;
+	--remote=*)
+		remote=${1#--remote=} && shift
+		continue
+		;;
+	--name=*)
+		branch=${1#--name=} && shift
+		continue
+		;;
+	--)
+		shift
+		cmd="$1"
+		shift
+		break
+		;;
+	*)
+		list[${#list[*]}]=$1
+		;;
+	esac
+	shift
+done
+while [ $# -ne 0 ]; do
+	list[${#list[*]}]="$1" && shift
+done
+eval set -- "${list[@]}"
+[ -n "$cmd" ] || die "No command specified."
+
+if [ -z "$remote" ]; then
+	remote=$1
+	[ -n "$remote" ] || die "No remote specified."
+	shift
+fi
+if [ -z "$branch" ]; then
+	branch=$1
+	[ -n "$branch" ] || die "No branch specified."
+	shift
+fi
+if [ -z "$remote_branch" ]; then
+	if [ $# -gt 0 ]; then
+		remote_branch=$1
+		[ -n "$remote_branch" ] || die "No remote branch specified."
+		shift
+	else
+		remote_branch=$branch
+	fi
+fi
+
+case "$cmd" in
+new)
+	git branch "${branch}" "${remote}/${remote_branch}"
+	git worktree add "${branch}" "${branch}"
+	exit $?
+	;;
+help)
+	[ $# -lt 1 ] && usage 0 || :
+	exec git-${1}-wt --help
+	;;
+*)
+	eval exec git "wt-$cmd" $extra $revs
+	;;
+esac
+
+for x in "$@" ; do
+	case "$x" in
+	--help|-h|--usage|-\?)
+		exec git-wt-${cmd} --help
+		;;
+	esac
+done
+
+exec git "wt-${cmd}" --remote "$remote" "$@"
