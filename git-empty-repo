@@ -8,20 +8,6 @@
 
 set -e
 
-remote_exists() {
-	local remote_name=$1 && shift
-	git remote get-url ${remote_name} >/dev/null 2>&1
-}
-
-branch_exists() {
-	local branch_name=$1 && shift
-	git branch | grep -q "^. ${branch_name}$"
-}
-
-get_current_branch() {
-	git branch | grep '^\* ' | cut -d\  -f2
-}
-
 SUBDIRECTORY_OK=No
 OPTIONS_SPEC="\
 git empty-repo [options]
@@ -42,63 +28,40 @@ OPTIONS_STUCKLONG=t
 
 set -u
 
-ABYSS_REPO=git://github.com/vathpela/abyss.git
-ABYSS_REMOTE=abyss
-ABYSS_REMOTE_BRANCH=gitignore
-ABYSS_BRANCH=empty
+get_current_branch() {
+	git branch | grep '^\* ' | cut -d\  -f2
+}
+
 declare -a list
-while [ $# -ge 1 ]; do
+ABYSS_BRANCH=""
+while [[ $# -ge 1 ]] ; do
 	case $1 in
-	--abyss-repo=*)
-		ABYSS_REPO=${1#--abyss-repo=} && shift
-		continue
-		;;
-	--abyss-remote=*)
-		ABYSS_REMOTE=${1#--abyss-remote=} && shift
-		continue
-		;;
-	--abyss-remote-branch=*)
-		ABYSS_REMOTE_BRANCH=${1#--abyss-remote-branch=} && shift
-		continue
+	--abyss-local-branch)
+		ABYSS_BRANCH="${2}"
+		list+=(--local-branch "${2}")
+		shift
 		;;
 	--abyss-local-branch=*)
-		ABYSS_BRANCH=${1#--abyss-local-branch=} && shift
-		continue
-		;;
-	--)
-		shift
-		break
+		ABYSS_BRANCH="${1#--abyss-local-branch=}"
+		list+=(--local-branch "${ABYSS_BRANCH}")
 		;;
 	*)
-		die "Unknown argument: ${1}"
+		list+=("${1}")
 		;;
 	esac
 	shift
 done
 
-CURRENT_BRANCH=$(get_current_branch)
-if ! remote_exists ${ABYSS_REMOTE} ; then
-	git remote add abyss ${ABYSS_REPO}
-	git fetch abyss
-fi
-if remote_exists origin ; then
-	CURRENT_REMOTE=origin
-elif git config --get branch.${CURRENT_BRANCH}.remote >/dev/null 2>&1 ; then
-	CURRENT_REMOTE=$(git config --get branch.${CURRENT_BRANCH}.remote)
+if [[ -z "${ABYSS_BRANCH}" ]] ; then
+	ABYSS_BRANCH=empty
+	list+=(empty)
 fi
 
-if ! branch_exists ${ABYSS_BRANCH} ; then
-	git branch ${ABYSS_BRANCH} ${ABYSS_REMOTE}/${ABYSS_REMOTE_BRANCH}
-fi
+git add-empty-branch "${list[@]}"
+
+CURRENT_BRANCH=$(get_current_branch)
 
 git checkout ${ABYSS_BRANCH}
 git worktree add ${CURRENT_BRANCH} ${CURRENT_BRANCH}
-if [ -v CURRENT_REMOTE ]; then
-	git config --replace-all remote.${ABYSS_REMOTE}.url $(git config --get remote.${CURRENT_REMOTE}.url)
-	git config --replace-all remote.${ABYSS_REMOTE}.fetch $(git config --get remote.${CURRENT_REMOTE}.fetch)
-else
-	git config --unset remote.${ABYSS_REMOTE}.url
-	git config --unset remote.${ABYSS_REMOTE}.fetch
-fi
 
 # vim:fenc=utf-8

@@ -1,0 +1,146 @@
+#!/bin/bash
+#
+# git-empty-repo
+# Copyright 2017 Peter Jones <pjones@redhat.com>
+#
+# Distributed under terms of the GPLv3 license.
+#
+
+set -e
+set -x
+
+SUBDIRECTORY_OK=No
+OPTIONS_SPEC="\
+git empty-repo <branch-name> [options]
+
+switch to using per-branch git work-trees in subdirs of an empty checkout
+--
+h,help show the help
+usage* show the help
+
+a,abyss-repo!=<repourl> for abyss repo
+r,abyss-remote!=<name> for abyss repo remote
+b,abyss-remote-branch!=<name> for remote abyss branch
+l,local-branch!=<name> for local new empty branch
+w,worktree!=<name> for worktree to add for empty branch"
+OPTIONS_KEEPDASHDASH=
+OPTIONS_STUCKLONG=t
+
+. /usr/libexec/git-core/git-sh-setup
+
+set -u
+
+remote_exists() {
+	local remote_name=$1 && shift
+	git remote get-url ${remote_name} >/dev/null 2>&1
+}
+
+branch_exists() {
+	local branch_name=$1 && shift
+	git branch | grep -q "^. ${branch_name}$"
+}
+
+get_current_branch() {
+	git branch | grep '^\* ' | cut -d\  -f2
+}
+
+ABYSS_BRANCH=""
+ABYSS_REPO=git://github.com/vathpela/abyss.git
+ABYSS_REMOTE=abyss
+ABYSS_REMOTE_BRANCH=gitignore
+ABYSS_BRANCH_WORKTREE=""
+declare -a list
+while [[ $# -ge 1 ]]; do
+	case $1 in
+	--abyss-repo)
+		ABYSS_REPO="${2}"
+		shift
+		;;
+	--abyss-repo=*)
+		ABYSS_REPO="${1#--abyss-repo=}"
+		;;
+	--abyss-remote)
+		ABYSS_REMOTE="${2}"
+		shift
+		;;
+	--abyss-remote=*)
+		ABYSS_REMOTE="${1#--abyss-remote=}"
+		;;
+	--abyss-remote-branch)
+		ABYSS_REMOTE_BRANCH="${2}"
+		shift
+		;;
+	--abyss-remote-branch=*)
+		ABYSS_REMOTE_BRANCH="${1#--abyss-remote-branch=}"
+		;;
+	--local-branch)
+		ABYSS_BRANCH="${2}"
+		shift
+		;;
+	--local-branch=*)
+		ABYSS_BRANCH="${1#--local-branch=}"
+		;;
+	--worktree)
+		ABYSS_BRANCH_WORKTREE="${2}"
+		shift
+		;;
+	--worktree=*)
+		ABYSS_BRANCH_WORKTREE="${1#--worktree=}"
+		;;
+	--)
+		;;
+	*)
+		if [[ -z "${ABYSS_BRANCH}" ]] ; then
+			ABYSS_BRANCH="${1}"
+		else
+			die "Unknown argument: ${1}"
+		fi
+		;;
+	esac
+	shift
+done
+
+if [[ -z "${ABYSS_BRANCH}" ]] ; then
+	die "New branch name must be provided."
+fi
+
+let REMOVE_ABYSS_REMOTE=0 || :
+if [[ -z "${ABYSS_REMOTE}" || ! -d ".git/refs/remotes/${ABYSS_REMOTE}" ]] ; then
+	let REMOVE_ABYSS_REMOTE=1 || :
+fi
+
+CURRENT_BRANCH=$(get_current_branch)
+if ! remote_exists ${ABYSS_REMOTE} ; then
+	git remote add abyss ${ABYSS_REPO}
+	git fetch abyss
+fi
+if remote_exists origin ; then
+	CURRENT_REMOTE=origin
+elif git config --get branch.${CURRENT_BRANCH}.remote >/dev/null 2>&1 ; then
+	CURRENT_REMOTE=$(git config --get branch.${CURRENT_BRANCH}.remote)
+fi
+
+if ! branch_exists ${ABYSS_BRANCH} ; then
+	git branch ${ABYSS_BRANCH} ${ABYSS_REMOTE}/${ABYSS_REMOTE_BRANCH}
+fi
+
+for x in branch.${ABYSS_BRANCH}{.remote,.merge} remote.${ABYSS_REMOTE}{.url,.fetch} ; do
+	while :; do
+		git config --unset-all ${x} || break
+	done
+done
+
+git config --remove-section branch.${ABYSS_BRANCH}
+git config --remove-section remote.${ABYSS_REMOTE}
+git remote rm "${ABYSS_REMOTE}" >/dev/null 2>&1 || :
+if [[ ${REMOVE_ABYSS_REMOTE} -eq 1 && \
+		-n "${ABYSS_REMOTE}" && \
+		-d ".git/refs/remotes/${ABYSS_REMOTE}" ]]; then
+	rm -rf ".git/refs/remotes/${ABYSS_REMOTE}"
+	rm -rf ".git/logs/refs/remotes/${ABYSS_REMOTE}"
+fi
+
+if [[ -n "${ABYSS_BRANCH_WORKTREE}" ]] ; then
+	git worktree add "${ABYSS_BRANCH_WORKTREE}" "${ABYSS_BRANCH}"
+fi
+# vim:fenc=utf-8
