@@ -110,8 +110,13 @@ fi
 
 CURRENT_BRANCH=$(get_current_branch)
 if ! remote_exists ${ABYSS_REMOTE} ; then
-	git remote add abyss ${ABYSS_REPO}
+	TMP_CHECKOUT=$(mktemp -d)
+	git clone --progress --no-single-branch \
+		--branch "${ABYSS_REMOTE_BRANCH}" \
+		"${ABYSS_REPO}" "${TMP_CHECKOUT}"
+	git remote add abyss "${TMP_CHECKOUT}/.git"
 	git fetch abyss
+	rm -rf "${TMP_CHECKOUT}/"
 fi
 if remote_exists origin ; then
 	CURRENT_REMOTE=origin
@@ -129,8 +134,8 @@ for x in branch.${ABYSS_BRANCH}{.remote,.merge} remote.${ABYSS_REMOTE}{.url,.fet
 	done
 done
 
-git config --remove-section branch.${ABYSS_BRANCH}
-git config --remove-section remote.${ABYSS_REMOTE}
+git config --remove-section branch.${ABYSS_BRANCH} 2>/dev/null || :
+git config --remove-section remote.${ABYSS_REMOTE} 2>/dev/null || :
 git remote rm "${ABYSS_REMOTE}" >/dev/null 2>&1 || :
 if [[ ${REMOVE_ABYSS_REMOTE} -eq 1 && \
 		-n "${ABYSS_REMOTE}" && \
