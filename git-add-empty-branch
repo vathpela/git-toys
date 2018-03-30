@@ -7,7 +7,6 @@
 #
 
 set -e
-set -x
 
 SUBDIRECTORY_OK=No
 OPTIONS_SPEC="\
