@@ -1,4 +1,5 @@
 [alias]
+	check = !sh -c 'git rebase "$@" -x \"make clean all\"' -
 	an = add-next
 	commit = !/home/pjones/.bin/noarch/git-commit-meta "$@"
 	cp = cherry-pick
