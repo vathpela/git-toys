@@ -6,9 +6,9 @@
 	diffstat = !sh -c 'git diff | diffstat -p1' "$@" -
 	fpaste = !sh -c 'git format-patch --stdout "$@" | fpaste' -
 	zlg = log --abbrev-commit -z --pretty=format:'%h'
-	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
-	lgv = log --color --graph --pretty=format:'%C(yellow)%h%d %C(bold blue)%cn%C(reset) %C(green)(%cr)%n%C(red)Author: %C(reset)%an%n%C(red)Date:   %C(reset)%ai%n%n%w(0,4,4)%s%n%n%w(0,4,4)%b'
-	list = !sh -c 'git rev-list --color --abbrev=7 --oneline --abbrev-commit "${1:-HEAD}" "${@:2}"' -
+	lg = log --abbrev-commit --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
+	lgv = log --abbrev-commit --color --graph --pretty=format:'%C(yellow)%h%d %C(bold blue)%cn%C(reset) %C(green)(%cr)%n%C(red)Author: %C(reset)%an%n%C(red)Date:   %C(reset)%ai%n%n%w(0,4,4)%s%n%n%w(0,4,4)%b'
+	list = !sh -c 'git rev-list --color --oneline --abbrev-commit "${1:-HEAD}" "${@:2}"' -
 	listr = !sh -c 'git list --reverse "$@"' -
 	news = log -p HEAD@{1}..HEAD@{0}
 	showstat = !sh -c 'git show | diffstat -p1' -
