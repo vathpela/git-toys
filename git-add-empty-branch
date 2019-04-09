@@ -134,8 +134,8 @@ for x in branch.${ABYSS_BRANCH}{.remote,.merge} remote.${ABYSS_REMOTE}{.url,.fet
 	done
 done
 
-git config --remove-section branch.${ABYSS_BRANCH} 2>/dev/null || :
-git config --remove-section remote.${ABYSS_REMOTE} 2>/dev/null || :
+git config --remove-section branch.${ABYSS_BRANCH} >/dev/null 2>&1 || :
+git config --remove-section remote.${ABYSS_REMOTE} >/dev/null 2>&1 || :
 git remote rm "${ABYSS_REMOTE}" >/dev/null 2>&1 || :
 if [[ ${REMOVE_ABYSS_REMOTE} -eq 1 && \
 		-n "${ABYSS_REMOTE}" && \
