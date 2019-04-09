@@ -15,3 +15,5 @@
 	wam = !sh -c 'curl ${1} | git am' -
 	xfpaste = !sh -c 'git fpaste "$@" | tail -1 | ([ -n "$DISPLAY" ] && (xclip -selection clipboard -i && xclip -selection clipboard -o) || cat)' -
 	xclip = !sh -c 'git show "$@" | ([ -n "$DISPLAY" ] && (xclip -selection clipboard -i && xclip -selection clipboard -o) || cat)' -
+	copy = !sh -c 'git format-patch --stdout "$@" | xclip -in -selection clipboard' -
+	paste = !sh -c 'xclip -out -selection clipboard | git am "$@"' -
