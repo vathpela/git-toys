@@ -34,16 +34,17 @@ cleanup() {
 		if [[ -z "${x}" ]] ; then
 			continue
 		fi
-		if [[ "${x}" = / ]] ; then
-			continue
-		fi
 		if [[ "${x}" -ef / ]] ; then
 			continue
 		fi
-		if ! [[ -d "${x}" ]] ; then
+		if [[ "${x}" -ef "${HOME}" ]] ; then
 			continue
 		fi
-		rm -rf "${x}"
+		if [[ -d "${x}" ]] ; then
+			rm -rf "${x}"
+		else
+			rm -f "${x}"
+		fi
 	done
 }
 
