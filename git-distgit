@@ -157,6 +157,29 @@ get-branchpoint() {
 	echo "${ref}"
 }
 
+mk-order-file() {
+	local orderfile="${1}" && shift
+	cat >"${orderfile}" <<EOF
+*.dec
+*.dsc.inc
+*.dsc
+*.fdf
+*.inf
+*.vfr
+*.ac
+*.def
+*.c
+*.C
+*.cpp
+*.h
+*.S
+*.mk
+Makefile.*
+Make.*
+Makefile
+EOF
+}
+
 declare distgit="$(getcfg distgit.path)"
 declare branch="$(getcfg distgit.branch)"
 declare branchpoint="$(getcfg distgit.branchpoint)"
@@ -299,6 +322,14 @@ rebase-from-distgit() {(
 		args[${#args[*]}]=-n
 	fi
 
+	local fmt_args=(--zero-commit --no-signature --no-numbered --stat=80 --summary --patience -l0)
+	if ! hascfg diff.orderFile ; then
+		local orderfile=$(mktemp)
+		fmt_args[${#fmt_args[*]}]="-O${orderfile}"
+		trash[${#trash[*]}]="${orderfile}"
+		mk-order-file "${orderfile}"
+	fi
+
 	if [[ -f "${patchfile}" ]] ; then
 		cat "${patchfile}" | while read dude filename whatever ; do
 			# this means it's not a git format-patch patch
@@ -323,7 +354,7 @@ rebase-from-distgit() {(
 			git fetch -q "${remote}"
 	fi
 	local patches=($(GIT_DIR="${GIT_DIR}" GIT_OBJECT_DIRECTORY="${GIT_OBJECT_DIRECTORY}" \
-		git format-patch "${args[@]}" ${branchpoint}..${branch}))
+		git format-patch "${fmt_args[@]}" "${args[@]}" ${branchpoint}..${branch}))
 	GIT_DIR="${OLD_GIT_DIR}"
 	GIT_OBJECT_DIRECTORY="${OLD_GIT_OBJECT_DIRECTORY}"
 	for patch in "${patches[@]}" ; do
