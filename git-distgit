@@ -10,6 +10,10 @@ regenerate patches for dist-git
 h,help show the help
 usage* show the help
 r,remote!=remote the name of the remote in the source-git repo
+distgit!=distgit the url for the distgit root
+branch!=branch the remote distgit branch name
+branchpoint!=refspec the point this tree was branched from
+fetch!=bool whether to fetch or not
 n,dry-run do not actually make any changes
 f,force force override previously staged changes
 x set -x
@@ -155,6 +159,12 @@ get-branchpoint() {
 	ref="${ref##*/}"
 	qpopd
 
+	if [[ -n "${ref}" ]] ; then
+		echo "${ref}"
+		return 0
+	fi
+
+	ref=$(getcfg "distgit.branch.${branch}.branchpoint")
 	echo "${ref}"
 }
 
@@ -247,18 +257,20 @@ while [ $# -ge 1 ]; do
 		;;
 	--)
 		if [[ ${#cmdopts[*]} -eq 0 ]] ; then
-			cmdopts[${#cmdopts[*]}]=$1
+			cmdopts[${#cmdopts[*]}]="$1"
 			shift
-			cmd="$1"
+			if [ $# -ge 1 ]; then
+				cmd="$1"
+			fi
 		else
-			cmdopts[${#cmdopts[*]}]=$1
+			cmdopts[${#cmdopts[*]}]="$1"
 		fi
 		;;
 	*)
 		if [[ ${#cmdopts[*]} -eq 0 ]] ; then
 			cmd="$1"
 		else
-			cmdopts[${#cmdopts[*]}]=$1
+			cmdopts[${#cmdopts[*]}]="$1"
 			shift
 		fi
 		;;
@@ -355,7 +367,7 @@ rebase-from-distgit() {(
 			git fetch -q "${remote}"
 	fi
 	local patches=($(GIT_DIR="${GIT_DIR}" GIT_OBJECT_DIRECTORY="${GIT_OBJECT_DIRECTORY}" \
-		git format-patch "${fmt_args[@]}" "${args[@]}" ${branchpoint}..${branch}))
+		git format-patch --binary "${fmt_args[@]}" "${args[@]}" ${branchpoint}..${branch}))
 	GIT_DIR="${OLD_GIT_DIR}"
 	GIT_OBJECT_DIRECTORY="${OLD_GIT_OBJECT_DIRECTORY}"
 	for patch in "${patches[@]}" ; do
