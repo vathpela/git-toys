@@ -3,7 +3,7 @@ set -e
 
 SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC="\
-git redist-git [options] <cmd> ...
+git distgit [options] <cmd> ...
 
 regenerate patches for dist-git
 --
@@ -21,6 +21,7 @@ x set -x
 OPTIONS_KEEPDASHDASH=
 OPTIONS_STUCKLONG=t
 
+# shellcheck source=/usr/libexec/git-core/git-sh-setup
 . "$(git --exec-path)/git-sh-setup"
 
 set -u
@@ -58,6 +59,7 @@ qpushd() {
 	pushd "${@}" >/dev/null 2>&1
 }
 
+# shellcheck disable=SC2120
 qpopd() {
 	popd "${@}" >/dev/null 2>&1
 }
@@ -107,8 +109,10 @@ parsebool() {
 }
 
 getcfg() {
-	local var="$(git config --get "${1}")"
+	local var
 	local args=("${@}")
+
+	var="$(git config --get "${1}")"
 	if [[ -n "${var}" ]] ; then
 		echo "${var}"
 	elif [[ -v args[1] ]] ; then
@@ -118,7 +122,7 @@ getcfg() {
 
 getbool() {
 	local first=$1 && shift
-	bool $(getcfg "${first}") "${@}"
+	bool "$(getcfg "${first}")" "${@}"
 }
 
 hascfg() {
@@ -126,7 +130,9 @@ hascfg() {
 }
 
 get-branch() {
-	local ref=$(getcfg distgit.branch)
+	local ref
+
+	ref=$(getcfg distgit.branch)
 	if [[ -n "${ref}" ]] ; then
 		echo "${ref}"
 		return 0
@@ -148,7 +154,9 @@ get-branch() {
 }
 
 get-branchpoint() {
-	local ref=$(getcfg distgit.branchpoint)
+	local ref
+
+	ref=$(getcfg distgit.branchpoint)
 	if [[ -n "${ref}" ]] ; then
 		echo "${ref}"
 		return 0
@@ -191,15 +199,32 @@ Makefile
 EOF
 }
 
-declare distgit="$(getcfg distgit.path)"
-declare branch="$(getcfg distgit.branch)"
-declare branchpoint="$(getcfg distgit.branchpoint)"
+declare distgit
+distgit="$(getcfg distgit.path)"
+
+declare branch
+branch="$(getcfg distgit.branch)"
+
+declare branchpoint
+branchpoint="$(getcfg distgit.branchpoint)"
+
+declare -l dry_run
+dry_run=$(getbool distgit.dry-run false)
+
+declare -l fetch
+fetch=$(getbool distgit.fetch true)
+
+declare -l force
+force=$(getbool distgit.force false)
+
+declare patchfile
+patchfile="$(getcfg distgit.patchfile patches)"
+
+declare remote
+remote="$(getcfg distgit.remote origin)"
+
 declare -a cmdopts=()
-declare -l dry_run=$(getbool distgit.dry-run false)
-declare -l fetch=$(getbool distgit.fetch true)
-declare -l force=$(getbool distgit.force false)
-declare patchfile="$(getcfg distgit.patchfile patches)"
-declare remote="$(getcfg distgit.remote origin)"
+
 declare cmd=""
 
 while [ $# -ge 1 ]; do
@@ -316,13 +341,13 @@ fi
 
 if [[ -z "${cmd}" ]] && [[ ${#cmdopts[@]} -gt 0 ]] ; then
 	declare cmd="${cmdopts[0]}"
-	unset cmdopts[0]
+	unset "cmdopts[0]"
 fi
 if [[ -v cmdopts[0] ]] && [[ "${cmdopts[0]}" = "--" ]] ; then
-	unset cmdopts[0]
+	unset "cmdopts[0]"
 fi
 if [[ -v cmdopts[1] ]] && [[ "${cmdopts[1]}" = "--" ]] ; then
-	unset cmdopts[1]
+	unset "cmdopts[1]"
 fi
 cmdopts=("${cmdopts[@]}")
 
@@ -335,16 +360,20 @@ rebase-from-distgit() {(
 		args[${#args[*]}]=-n
 	fi
 
-	local fmt_args=(--zero-commit --no-signature --no-numbered --stat=80 --summary --patience -l0)
+	local fmt_args=(--zero-commit --no-signature --no-numbered "--stat=80" --summary --patience -l0)
 	if ! hascfg diff.orderFile ; then
-		local orderfile=$(mktemp)
+		local orderfile
+		orderfile=$(mktemp)
 		fmt_args[${#fmt_args[*]}]="-O${orderfile}"
 		trash[${#trash[*]}]="${orderfile}"
 		mk-order-file "${orderfile}"
 	fi
 
 	if [[ -f "${patchfile}" ]] ; then
-		cat "${patchfile}" | while read dude filename whatever ; do
+		local -a oldpatches
+		mapfile -t oldpatches < <(awk '{ print $2 }' < "${patchfile}")
+		for filename in "${oldpatches[@]}"
+		do
 			# this means it's not a git format-patch patch
 			if ! [[ ${filename} =~ [[:digit:]]+-.*\.patch ]] ; then
 				continue
@@ -352,7 +381,7 @@ rebase-from-distgit() {(
 			if ! [[ -f "${filename}" ]] ; then
 				continue
 			fi
-			git rm -q "${args[@]}" ${filename}
+			git rm -q "${args[@]}" "${filename}"
 		done
 	fi
 	qpushd "${distgit}"
@@ -366,8 +395,12 @@ rebase-from-distgit() {(
 		GIT_DIR="${GIT_DIR}" GIT_OBJECT_DIRECTORY="${GIT_OBJECT_DIRECTORY}" \
 			git fetch -q "${remote}"
 	fi
-	local patches=($(GIT_DIR="${GIT_DIR}" GIT_OBJECT_DIRECTORY="${GIT_OBJECT_DIRECTORY}" \
-		git format-patch --binary "${fmt_args[@]}" "${args[@]}" ${branchpoint}..${branch}))
+	local -a patches
+	mapfile -t patches < <(GIT_DIR="${GIT_DIR}" \
+			       GIT_OBJECT_DIRECTORY="${GIT_OBJECT_DIRECTORY}" \
+			       git format-patch --binary --full-index \
+					"${fmt_args[@]}" "${args[@]}" \
+					"${branchpoint}..${branch}")
 	GIT_DIR="${OLD_GIT_DIR}"
 	GIT_OBJECT_DIRECTORY="${OLD_GIT_OBJECT_DIRECTORY}"
 	for patch in "${patches[@]}" ; do
