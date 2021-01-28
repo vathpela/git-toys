@@ -6,8 +6,8 @@
 	diffstat = !sh -c 'git diff | diffstat -p1' "$@" -
 	fpaste = !sh -c 'git format-patch --stdout "$@" | fpaste' -
 	zlg = log --abbrev-commit -z --pretty=format:'%h'
-	lg = log --abbrev-commit --color --graph --pretty=tformat:'%C(red)%h%C(reset) -%C(yellow)%d%C(reset) %s %C(green)(%cr)%C(reset) %C(bold blue)<%an>%C(reset)'
-	lgv = log --abbrev-commit --color --graph --pretty=tformat:'%C(yellow)%h%d %C(bold blue)%cn%C(reset) %C(green)(%cr)%C(reset)%n%C(red)Author: %C(reset)%an%C(reset)%n%C(red)Date: %C(reset)%ai%n%n%w(0,4,4)%s%n%n%w(0,4,4)%b%C(reset)'
+	lg = log --abbrev-commit --color --graph --pretty=tformat:'%C(red)%h%C(reset) -%C(yellow)%d%C(reset) %s %C(green)(%ci)%C(reset) %C(bold blue)<%an>%C(reset)'
+	lgv = log --abbrev-commit --color --graph --pretty=tformat:'%C(yellow)%h%d %C(bold blue)%cn%C(reset) %C(green)(%ci)%C(reset)%n%C(red)Author: %C(reset)%an%C(reset)%n%C(red)Date: %C(reset)%ai%n%n%w(0,4,4)%s%n%n%w(0,4,4)%b%C(reset)'
 	list = !sh -c 'git rev-list --color --oneline --abbrev-commit "${1:-HEAD}" "${@:2}"' -
 	listr = !sh -c 'git list --reverse "$@"' -
 	news = log -p HEAD@{1}..HEAD@{0}
