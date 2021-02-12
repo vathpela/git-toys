@@ -5,13 +5,13 @@ SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC="\
 git distgit [options] <cmd> ...
 
-regenerate patches for dist-git
+regenerate patches for distgit
 --
 h,help show the help
 usage* show the help
 r,remote!=remote the name of the remote in the source-git repo
-distgit!=distgit the url for the distgit root
-branch!=branch the remote distgit branch name
+srcgit!=srcgit the url for the source-git checkout
+branch!=branch the remote source-git branch name
 branchpoint!=refspec the point this tree was branched from
 fetch!=bool whether to fetch or not
 n,dry-run do not actually make any changes
@@ -138,7 +138,7 @@ get-branch() {
 		return 0
 	fi
 
-	qpushd "${distgit}"
+	qpushd "${srcgit}"
 	ref=$(git symbolic-ref HEAD)
 	ref="${ref##*/}"
 	qpopd
@@ -162,7 +162,7 @@ get-branchpoint() {
 		return 0
 	fi
 
-	qpushd "${distgit}"
+	qpushd "${srcgit}"
 	ref=$(getcfg "branch.${branch}.merge" || :;)
 	ref="${ref##*/}"
 	qpopd
@@ -199,8 +199,8 @@ Makefile
 EOF
 }
 
-declare distgit
-distgit="$(getcfg distgit.path)"
+declare srcgit
+srcgit="$(getcfg distgit.path)"
 
 declare branch
 branch="$(getcfg distgit.branch)"
@@ -234,12 +234,12 @@ while [ $# -ge 1 ]; do
 		continue
 	fi
 	case $1 in
-	--distgit=*)
-		distgit=${1#--distgit=}
+	--srcgit=*)
+		srcgit=${1#--srcgit=}
 		;;
-	--distgit)
+	--srcgit)
 		shift
-		distgit=${1}
+		srcgit=${1}
 		;;
 	--branch=*)
 		branch=${1#--branch=}
@@ -303,16 +303,20 @@ while [ $# -ge 1 ]; do
 	shift
 done
 
-if [[ -z "${distgit}" ]] ; then
-	distgit="$(getcfg distgit.path)"
+if [[ -z "${srcgit}" ]] ; then
+	srcgit="$(getcfg distgit.path)"
 fi
-if [[ -z "${distgit}" ]] ; then
+if [[ -z "${srcgit}" ]] ; then
 	echo "distgit: error: distgit.path not set.  Run the following:" 1>&2
-	echo "git config --local --add distgit.path /PATH/TO/DIST-GIT/CHECKOUT" 1>&2
+	echo "git config --local --add distgit.path /PATH/TO/SOURCE-GIT/CHECKOUT" 1>&2
 	exit 1
 fi
-if ! [[ -d "${distgit}" ]] ; then
-	echo "distgit: error: \"${distgit}\" is not a directory." 1>&2
+if ! [[ -d "${srcgit}" ]] ; then
+	echo "srcgit: error: \"${srcgit}\" is not a directory." 1>&2
+	exit 1
+fi
+if ! [[ -e "${srcgit}/.git" ]] ; then
+	echo "srcgit: \"${srcgit}/.git\" not found." 1>&2
 	exit 1
 fi
 
@@ -320,8 +324,8 @@ if [[ -z "${branch}" ]] ; then
 	branch="$(get-branch)"
 fi
 if [[ -z "${branch}" ]] ; then
-	echo "dist-git: error: distgit.branch not set.  Run the following:" 1>&2
-	echo "git config --local --add distgit.branch DIST-GIT-BRANCH-NAME" 1>&2
+	echo "distgit: error: distgit.branch not set.  Run the following:" 1>&2
+	echo "git config --local --add distgit.branch source-git-BRANCH-NAME" 1>&2
 	exit 1
 fi
 
@@ -329,8 +333,8 @@ if [[ -z "${branchpoint}" ]] ; then
 	branchpoint="$(get-branchpoint "${branch}")"
 fi
 if [[ -z "${branchpoint}" ]] ; then
-	echo "dist-git: error: distgit.branchpoint not set.  Run the following:" 1>&2
-	echo "git config --local --add distgit.branchpoint DIST-GIT-branchpoint-NAME" 1>&2
+	echo "distgit: error: distgit.branchpoint not set.  Run the following:" 1>&2
+	echo "git config --local --add distgit.branchpoint source-git-branchpoint-NAME" 1>&2
 	exit 1
 fi
 
@@ -351,7 +355,7 @@ if [[ -v cmdopts[1] ]] && [[ "${cmdopts[1]}" = "--" ]] ; then
 fi
 cmdopts=("${cmdopts[@]}")
 
-rebase-from-distgit() {(
+rebase-from-srcgit() {(
 	local args=()
 	if [[ "${force}" = true ]] ; then
 		args[${#args[*]}]=-f
@@ -384,7 +388,7 @@ rebase-from-distgit() {(
 			git rm -q "${args[@]}" "${filename}"
 		done
 	fi
-	qpushd "${distgit}"
+	qpushd "${srcgit}"
 	local OLD_GIT_DIR="${GIT_DIR}"
 	local OLD_GIT_OBJECT_DIRECTORY="${GIT_OBJECT_DIRECTORY}"
 	unset GIT_DIR GIT_OBJECT_DIRECTORY
@@ -420,7 +424,7 @@ rebase-from-distgit() {(
 case "${cmd}" in
 	rebase)
 		require_clean_work_tree rebase "Please commit or stash them."
-		rebase-from-distgit "${cmdopts[@]}"
+		rebase-from-srcgit "${cmdopts[@]}"
 		;;
 	*)
 		echo "No such command ${cmd}" >>/dev/stderr
