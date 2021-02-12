@@ -17,3 +17,42 @@
 	xclip = !sh -c 'git show "$@" | ([ -n "$DISPLAY" ] && (xclip -selection clipboard -i && xclip -selection clipboard -o) || cat)' -
 	copy = !sh -c 'git format-patch --stdout "$@" | xclip -in -selection clipboard' -
 	paste = !sh -c 'xclip -out -selection clipboard | git am "$@"' -
+[blame]
+	showemail = true
+	date = short
+[color]
+	diff = true
+	ui = auto
+[core]
+	filemode = true
+	whitespace = cr-at-eol
+	abbrev = 11
+[diff]
+	algorithm = patience
+	color = auto
+	colorMoved = zebra
+	colorMovedWs = allow-indentation-change
+	#
+	## It's really obnoxious that diff.orderFile can't interpolate
+	## variables or take use a path relative to this file.  So you'll need
+	## something akin to this in your ~/.gitconfig or whatnot:
+	#
+	# orderFile = ~/devel/github.com/git-toys/main/git.diff.order
+	#
+	renames = true
+	renamelimit = 0
+[extensions]
+	worktreeConfig = true
+[merge]
+	ff = only
+[init]
+	defaultBranch = main
+[push]
+	default = simple
+	followTags = true
+[rebase]
+	autosquash = true
+[sendemail]
+	chainreplyto = false
+[tar "tar.xz"]
+	command = xz -c
