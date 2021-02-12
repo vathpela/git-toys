@@ -43,16 +43,26 @@
 	renamelimit = 0
 [extensions]
 	worktreeConfig = true
+[fetch]
+	fsckObjects = true
 [merge]
 	ff = only
 [init]
 	defaultBranch = main
+[protocol "git"]
+	allow = never
+[protocol "http"]
+	allow = never
 [push]
 	default = simple
 	followTags = true
 [rebase]
 	autosquash = true
+[receive]
+	fsckObjects = true
 [sendemail]
 	chainreplyto = false
 [tar "tar.xz"]
 	command = xz -c
+[transfer]
+	fsckObjects = true
