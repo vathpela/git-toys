@@ -49,8 +49,6 @@
 	ff = only
 [init]
 	defaultBranch = main
-[protocol "git"]
-	allow = never
 [protocol "http"]
 	allow = never
 [push]
